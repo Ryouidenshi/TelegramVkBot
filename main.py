@@ -1,6 +1,8 @@
 from __future__ import unicode_literals
 import telebot
-import Parser
+
+import parserComments
+import parserUsers
 from telebot import types
 
 import buttons
@@ -40,16 +42,23 @@ def start_bot(message: types.Message):
 
 @bot.message_handler(content_types=['text'])
 def select_func(message):
-    idGroups = {}
+    idGroupsForUsers = {}
+    idGroupsForComments = {}
     if message.text == buttons.butFunc1.text:
         intermediateIdGroup = bot.send_message(message.chat.id, 'Введите идентификатор группы',
                                                reply_markup=buttons.cycleKeyboard)
-        bot.register_next_step_handler(intermediateIdGroup, get_users, idGroups)
+        bot.register_next_step_handler(intermediateIdGroup, get_users, idGroupsForUsers)
     elif message.text == buttons.butFunc2.text:
-        adv = bot.send_message(message.chat.id, '?', reply_markup=buttons.functionalKeyboard)
-        bot.register_next_step_handler(adv, select_func)
+        idGroupCom = bot.send_message(message.chat.id, 'Введите идентификатор группы')
+        bot.register_next_step_handler(idGroupCom, get_comments,idGroupsForComments)
     else:
         intermediateIdGroup = bot.send_message(message.chat.id, 'Такой функции нет :(')
+
+
+@bot.message_handler(content_types=['text'])
+def get_comments(message, idGroupsForComments):
+    g = parserComments.get_allComments(message.text)
+    d = 0
 
 
 @bot.message_handler(content_types=['text'])
@@ -69,11 +78,11 @@ def get_users(message, idGroups):
         get_result(message, idGroups)
     else:
         bot.send_photo(message.chat.id, photo=open('pic/wait.jpg', 'rb'))
-        parseGroup = Parser.get_usersInGroup(message.text)
+        parseGroup = parserUsers.get_usersInGroup(message.text)
         if parseGroup == errorInputGroup:
             bot.send_message(message.chat.id, errorInputGroup)
         else:
-            idGroups[message.text] = Parser.get_usersInGroup(message.text)
+            idGroups[message.text] = parserUsers.get_usersInGroup(message.text)
         if len(idGroups) > 0:
             bot.send_message(message.chat.id, 'Введённые группы: ')
         for i in idGroups.keys():
