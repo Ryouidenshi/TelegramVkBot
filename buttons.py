@@ -11,3 +11,7 @@ btnCycle1 = types.KeyboardButton('Остановить')
 btnCycle2 = types.KeyboardButton('Показать результат')
 cycleKeyboard.add(btnCycle1, btnCycle2)
 
+cycle2Keyboard = types.ReplyKeyboardMarkup(row_width=1, resize_keyboard=True)
+btn2Cycle1 = types.KeyboardButton('Остановить')
+cycle2Keyboard.add(btn2Cycle1)
+

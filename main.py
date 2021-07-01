@@ -43,22 +43,25 @@ def start_bot(message: types.Message):
 @bot.message_handler(content_types=['text'])
 def select_func(message):
     idGroupsForUsers = {}
-    idGroupsForComments = {}
     if message.text == buttons.butFunc1.text:
         intermediateIdGroup = bot.send_message(message.chat.id, 'Введите идентификатор группы',
                                                reply_markup=buttons.cycleKeyboard)
         bot.register_next_step_handler(intermediateIdGroup, get_users, idGroupsForUsers)
     elif message.text == buttons.butFunc2.text:
-        idGroupCom = bot.send_message(message.chat.id, 'Введите идентификатор группы')
-        bot.register_next_step_handler(idGroupCom, get_comments,idGroupsForComments)
+        idGroupCom = bot.send_message(message.chat.id, 'Введите идентификатор группы',
+                                      reply_markup=buttons.cycle2Keyboard)
+        bot.register_next_step_handler(idGroupCom, get_comments)
     else:
         intermediateIdGroup = bot.send_message(message.chat.id, 'Такой функции нет :(')
 
 
 @bot.message_handler(content_types=['text'])
-def get_comments(message, idGroupsForComments):
-    g = parserComments.get_allComments(message.text)
-    d = 0
+def get_comments(message):
+    try:
+        comments = parserComments.get_allComments(message.text)
+    except Exception:
+        bot.send_message(message.chat.id, 'В данной группе закрыты комментарии, комментариев нет или нет '
+                                          'доступа!\nПопробуйте заново.', reply_markup=buttons.functionalKeyboard)
 
 
 @bot.message_handler(content_types=['text'])
