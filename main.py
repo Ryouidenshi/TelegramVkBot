@@ -9,16 +9,21 @@ from telebot import types
 import buttons
 import group
 import graph
+import vectors
 
 token = "1782563790:AAG1dhMmgZiw9_Hhzfoglxo7yRCOnwSt0jA"
 
 bot = telebot.TeleBot(token)
 
-welcome = open('Welcome.txt').read()
+welcome = open('helpingFiles/Welcome.txt').read()
 
-endingFirstFunc = open('EndFirstFunc.txt').read()
+endingFirstFunc = open('helpingFiles/EndFirstFunc.txt').read()
 
-errorInputGroup = open('helpingFiles/ErrorInputGroupForFindUsers.txt').read()
+errorInputGroup = open('helpingFiles/ErrorFoundGroup.txt').read()
+
+errorFoundComments = open('helpingFiles/ErrorFoundComments.txt').read()
+
+errorFoundGroup = open('helpingFiles/ErrorFoundGroup.txt').read()
 
 
 def write_start_message(message):
@@ -58,8 +63,16 @@ def select_func(message):
 
 @bot.message_handler(content_types=['text'])
 def get_comments(message):
+    bot.send_photo(message.chat.id, photo=open('pic/wait.jpg', 'rb'))
     comments = parserComments.get_allComments(message.text)
-    h = 0
+    if comments == errorFoundComments:
+        error = bot.send_message(message.chat.id, errorFoundComments, reply_markup=buttons.functionalKeyboard)
+        bot.register_next_step_handler(error, select_func)
+    elif comments == errorFoundGroup:
+        error = bot.send_message(message.chat.id, errorFoundGroup, reply_markup=buttons.functionalKeyboard)
+        bot.register_next_step_handler(error, select_func)
+    else:
+        vectors.get_vectors(comments)
 
 
 @bot.message_handler(content_types=['text'])

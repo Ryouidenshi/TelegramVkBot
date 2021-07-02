@@ -4,8 +4,6 @@ import requests
 
 import parserPosts
 
-errorInputGroup = open('helpingFiles/ErrorInputGroupForFindUsers.txt').read()
-
 token = '97e0797797e0797797e07977089798170c997e097e07977f73dfa498a09c0bebff270ba'
 
 
@@ -28,10 +26,9 @@ def get_allComments(groupDomain, listComments=None):
     try:
         postsId = split_postsId(parserPosts.get_idPosts(groupDomain))
     except Exception:
-        errorFoundGroup = open('helpingFiles/ErrorFoundGroup.txt')
+        errorFoundGroup = open('helpingFiles/ErrorFoundGroup.txt').read()
         return errorFoundGroup
     idGroup = parserPosts.get_response(0, groupDomain)['items'][0]['owner_id']
-    timeNewestComment = get_response(0, idGroup, postsId[0])['items'][0]['date']
 
     countParsedComments = 0
     threads = list()
@@ -43,7 +40,10 @@ def get_allComments(groupDomain, listComments=None):
         x.start()
         countParsedComments += 100
     [thread.join() for thread in threads]
+    if len(listComments) == 0:
+        return open('helpingFiles/ErrorFoundComments.txt').read()
     fileTime = open('data/PreviousDate.txt', 'a')
+    timeNewestComment = get_response(0, idGroup, postsId[0])['items'][0]['date']
     fileTime.write(groupDomain + " " + str(timeNewestComment) + "\n")
     return listComments
 

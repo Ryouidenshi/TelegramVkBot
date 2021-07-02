@@ -28,6 +28,5 @@ def get_fileTxt(listIntersection, txtNumber):
             fileTxt.write(key + " " + str(item[key]) + "\n")
 
 
-
 def get_count(group):
     return len(group)

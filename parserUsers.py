@@ -2,7 +2,7 @@ import threading
 
 import requests
 
-errorInputGroupForFindUsers = open('helpingFiles/ErrorInputGroupForFindUsers.txt').read()
+errorInputGroupForFindUsers = open('helpingFiles/ErrorFoundGroup.txt').read()
 
 token = '74414b0d74414b0d74414b0d51743900907744174414b0d148cb840b3a4c7c908271c3d'
 
@@ -50,5 +50,5 @@ def get_usersInGroup(groupId, listUsersInGroup=None):
                 listUsersInGroup.append(item['id'])
         return listUsersInGroup
     except Exception:
-        errorInputGroupForFindUsers = open('helpingFiles/ErrorInputGroupForFindUsers.txt').read()
+        errorInputGroupForFindUsers = open('helpingFiles/ErrorFoundGroup.txt').read()
         return errorInputGroupForFindUsers

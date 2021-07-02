@@ -2,7 +2,7 @@ import threading
 
 import requests
 
-errorInputGroup = open('helpingFiles/ErrorInputGroupForFindUsers.txt').read()
+errorInputGroup = open('helpingFiles/ErrorFoundGroup.txt').read()
 
 token = '97e0797797e0797797e07977089798170c997e097e07977f73dfa498a09c0bebff270ba'
 
