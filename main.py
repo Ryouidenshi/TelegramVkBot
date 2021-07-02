@@ -36,7 +36,7 @@ def write_start_message(message):
 
 @bot.message_handler(commands=['start', 'help'])
 def start_message(message: types.Message):
-    bot.send_photo(message.chat.id, photo=open('pic/pre.jpg', 'rb'))
+    bot.send_photo(message.chat.id, photo=open('picUsers/pre.jpg', 'rb'))
     write_start_message(message)
 
 
@@ -63,7 +63,8 @@ def select_func(message):
 
 @bot.message_handler(content_types=['text'])
 def get_comments(message):
-    bot.send_photo(message.chat.id, photo=open('pic/wait.jpg', 'rb'))
+    global numberImageComments
+    bot.send_photo(message.chat.id, photo=open('picUsers/wait.jpg', 'rb'))
     comments = parserComments.get_allComments(message.text)
     if comments == errorFoundComments:
         error = bot.send_message(message.chat.id, errorFoundComments, reply_markup=buttons.functionalKeyboard)
@@ -72,7 +73,15 @@ def get_comments(message):
         error = bot.send_message(message.chat.id, errorFoundGroup, reply_markup=buttons.functionalKeyboard)
         bot.register_next_step_handler(error, select_func)
     else:
-        vectors.get_vectors(comments)
+        try:
+            advNumber = numberImageComments
+            vectors.get_graph(comments, advNumber)
+            bot.send_photo(message.chat.id, photo=open('picComments/' + str(advNumber) + '.png', 'rb'))
+            numberImageComments += 1
+            bot.send_message(message.chat.id, endingFirstFunc, reply_markup=buttons.functionalKeyboard)
+        except Exception:
+            error = bot.send_message(message.chat.id, 'Что-то пошло не так! Заново!', reply_markup=buttons.functionalKeyboard)
+            bot.register_next_step_handler(error, select_func)
 
 
 @bot.message_handler(content_types=['text'])
@@ -91,7 +100,7 @@ def get_users(message, idGroups):
     elif message.text == buttons.btnCycle2.text and len(idGroups) >= 2:
         get_result(message, idGroups)
     else:
-        bot.send_photo(message.chat.id, photo=open('pic/wait.jpg', 'rb'))
+        bot.send_photo(message.chat.id, photo=open('picUsers/wait.jpg', 'rb'))
         parseGroup = parserUsers.get_usersInGroup(message.text)
         if parseGroup == errorInputGroup:
             bot.send_message(message.chat.id, errorInputGroup)
@@ -108,7 +117,7 @@ def get_users(message, idGroups):
 @bot.message_handler(content_types=['text'])
 def get_result(message, idGroups):
     global numberIndex
-    bot.send_photo(message.chat.id, photo=open('pic/wait.jpg', 'rb'))
+    bot.send_photo(message.chat.id, photo=open('picUsers/wait.jpg', 'rb'))
     bot.send_message(message.chat.id, 'Общие подписчики групп: ')
     doneGroups = group.get_doneGroups(idGroups, numberIndex)
     # groups_intersection - (UPDATED) список где я сохраняю вот эти все общее количество членов у пары групп
@@ -142,12 +151,14 @@ def get_result(message, idGroups):
     graph.make_plotGraph(groups_count, groups_intersection, advNumber)
 
     # Отправляем фотку клиенту
-    bot.send_photo(message.chat.id, photo=open('pic/' + str(advNumber) + '.png', 'rb'))
+    bot.send_photo(message.chat.id, photo=open('picUsers/' + str(advNumber) + '.png', 'rb'))
     txtFile = open('data/dataUsers' + str(advNumber) + '.txt', 'r')
     bot.send_document(message.chat.id, txtFile)
     bot.send_message(message.chat.id, endingFirstFunc, reply_markup=buttons.functionalKeyboard)
 
 
 numberIndex = 1
+
+numberImageComments = 1
 
 bot.infinity_polling(1)

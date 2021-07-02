@@ -88,4 +88,4 @@ def plot_graph(graph, numberImage):
 
     # Надо вместо сохранения в файл попробовать в какую-то структуру данных сохранить
     # и через return вернуть для дальнейшей отправки картинки через бота
-    plt.savefig('pic/' + str(numberImage) + '.png')
+    plt.savefig('picUsers/' + str(numberImage) + '.png')
