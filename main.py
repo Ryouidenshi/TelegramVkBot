@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 import telebot
 
 import parserComments
+import parserPosts
 import parserUsers
 from telebot import types
 
@@ -17,7 +18,7 @@ welcome = open('Welcome.txt').read()
 
 endingFirstFunc = open('EndFirstFunc.txt').read()
 
-errorInputGroup = open('ErrorInputGroup.txt').read()
+errorInputGroup = open('helpingFiles/ErrorInputGroupForFindUsers.txt').read()
 
 
 def write_start_message(message):
@@ -57,11 +58,8 @@ def select_func(message):
 
 @bot.message_handler(content_types=['text'])
 def get_comments(message):
-    try:
-        comments = parserComments.get_allComments(message.text)
-    except Exception:
-        bot.send_message(message.chat.id, 'В данной группе закрыты комментарии, комментариев нет или нет '
-                                          'доступа!\nПопробуйте заново.', reply_markup=buttons.functionalKeyboard)
+    comments = parserComments.get_allComments(message.text)
+    h = 0
 
 
 @bot.message_handler(content_types=['text'])
