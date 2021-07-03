@@ -28,5 +28,23 @@ def get_fileTxt(listIntersection, txtNumber):
             fileTxt.write(key + " " + str(item[key]) + "\n")
 
 
-def get_count(group):
-    return len(group)
+def get_count(idGroups):
+    groups_count = {}
+    keys = idGroups.keys()
+    for keyForCount in keys:
+        groups_count[keyForCount] = len(idGroups[keyForCount])
+    return groups_count
+
+
+def get_groupsIntersection(doneGroups):
+    groups_intersection = []
+    for gr in doneGroups:
+        if gr is not None:
+            keys = gr.keys()
+            for key in keys:
+                if gr[key] != 0:
+                    userGroups_split = str(gr[key]).split()
+                    list_split = str(key).split()
+                    groups_intersection.append([list_split[0], list_split[3], len(userGroups_split)])
+    return groups_intersection
+

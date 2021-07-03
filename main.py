@@ -1,11 +1,8 @@
 from __future__ import unicode_literals
 import telebot
-
 import parserComments
-import parserPosts
 import parserUsers
 from telebot import types
-
 import buttons
 import group
 import graph
@@ -29,15 +26,25 @@ errorFoundGroup = open('helpingFiles/ErrorFoundGroup.txt').read()
 def write_start_message(message):
     bot.reply_to(message,
                  welcome + "\n\n"
-                 "Используйте следующие команды:\n"
-                 "/help - помощь\n"
-                 "/startbot - запустить бота\n")
+                           "Используйте следующие команды:\n"
+                           "/help - помощь\n"
+                           "/startbot - запустить бота\n")
 
 
-@bot.message_handler(commands=['start', 'help'])
+@bot.message_handler(commands=['start'])
 def start_message(message: types.Message):
-    bot.send_photo(message.chat.id, photo=open('picUsers/pre.jpg', 'rb'))
+    bot.send_photo(message.chat.id, photo=open('data/pre.jpg', 'rb'), reply_markup=types.ReplyKeyboardRemove())
     write_start_message(message)
+
+
+@bot.message_handler(commands=['help'])
+def help_message(message: types.Message):
+    bot.send_photo(message.chat.id, photo=open('data/help.jpg', 'rb'), reply_markup=buttons.functionalKeyboard)
+    bot.reply_to(message, "Используйте следующие команды:\n"
+                          "Сделать анализ по общим пользователям - производится анализ групп VK по общим "
+                          "пользователям.\n"
+                          "Найти вектор комментариев - производится поиск обсуждаемых тем группы VK.\n"
+                          "Для связи с поддержкой пишите сюда - @yungryouidenshi")
 
 
 @bot.message_handler(commands=['startbot'])
@@ -57,31 +64,40 @@ def select_func(message):
         idGroupCom = bot.send_message(message.chat.id, 'Введите идентификатор группы',
                                       reply_markup=buttons.cycle2Keyboard)
         bot.register_next_step_handler(idGroupCom, get_comments)
+    elif message.text == '/help':
+        help_message(message)
+    elif message.text == '/start':
+        start_message(message)
     else:
-        intermediateIdGroup = bot.send_message(message.chat.id, 'Такой функции нет :(')
+        bot.send_message(message.chat.id, 'Такой функции нет :(')
 
 
 @bot.message_handler(content_types=['text'])
 def get_comments(message):
     global numberImageComments
-    bot.send_photo(message.chat.id, photo=open('picUsers/wait.jpg', 'rb'))
-    comments = parserComments.get_allComments(message.text)
-    if comments == errorFoundComments:
-        error = bot.send_message(message.chat.id, errorFoundComments, reply_markup=buttons.functionalKeyboard)
-        bot.register_next_step_handler(error, select_func)
-    elif comments == errorFoundGroup:
-        error = bot.send_message(message.chat.id, errorFoundGroup, reply_markup=buttons.functionalKeyboard)
-        bot.register_next_step_handler(error, select_func)
+    if message.text == 'Остановить':
+        func = bot.send_message(message.chat.id, 'Выберите фунцию.', reply_markup=buttons.functionalKeyboard)
+        bot.register_next_step_handler(func, select_func)
     else:
-        try:
-            advNumber = numberImageComments
-            vectors.get_graph(comments, advNumber)
-            bot.send_photo(message.chat.id, photo=open('picComments/' + str(advNumber) + '.png', 'rb'))
-            numberImageComments += 1
-            bot.send_message(message.chat.id, endingFirstFunc, reply_markup=buttons.functionalKeyboard)
-        except Exception:
-            error = bot.send_message(message.chat.id, 'Что-то пошло не так! Заново!', reply_markup=buttons.functionalKeyboard)
+        bot.send_photo(message.chat.id, photo=open('picUsers/wait.jpg', 'rb'))
+        comments = parserComments.get_allComments(message.text)
+        if comments == errorFoundComments:
+            error = bot.send_message(message.chat.id, errorFoundComments, reply_markup=buttons.functionalKeyboard)
             bot.register_next_step_handler(error, select_func)
+        elif comments == errorFoundGroup:
+            error = bot.send_message(message.chat.id, errorFoundGroup, reply_markup=buttons.functionalKeyboard)
+            bot.register_next_step_handler(error, select_func)
+        else:
+            try:
+                advNumber = numberImageComments
+                vectors.get_graph(comments, advNumber)
+                bot.send_photo(message.chat.id, photo=open('picComments/' + str(advNumber) + '.png', 'rb'))
+                numberImageComments += 1
+                bot.send_message(message.chat.id, endingFirstFunc, reply_markup=buttons.functionalKeyboard)
+            except Exception:
+                error = bot.send_message(message.chat.id, 'Что-то пошло не так! Заново!',
+                                         reply_markup=buttons.functionalKeyboard)
+                bot.register_next_step_handler(error, select_func)
 
 
 @bot.message_handler(content_types=['text'])
@@ -120,35 +136,24 @@ def get_result(message, idGroups):
     bot.send_photo(message.chat.id, photo=open('picUsers/wait.jpg', 'rb'))
     bot.send_message(message.chat.id, 'Общие подписчики групп: ')
     doneGroups = group.get_doneGroups(idGroups, numberIndex)
-    # groups_intersection - (UPDATED) список где я сохраняю вот эти все общее количество членов у пары групп
-    groups_intersection = []
-    for gr in doneGroups:
-        if gr is not None:
-            keys = gr.keys()
-            for key in keys:
-                if gr[key] != 0:
-                    userGroups_split = str(gr[key]).split()
-                    bot.send_message(message.chat.id, "Группа " + str(key) + " имеют " +
-                                     str(len(userGroups_split)) + " общих пользователей.")
-                    # Я был вынужден расплитить названия групп чтобы потом удобнее было работать в make_graph
-                    list_split = str(key).split()
-                    # UPDATED
-                    # Добавляем в список. Три элемента - группа 1, группа2, общее количество членов у этих двух групп
-                    groups_intersection.append([list_split[0], list_split[3], len(userGroups_split)])
+
+    groups_intersection = group.get_groupsIntersection(doneGroups)
+    for gr in groups_intersection:
+        bot.send_message(message.chat.id, "Группа " + gr[0] + " и группа "
+                         + gr[1] + " имеют " + str(gr[2]) + " общих пользователей.")
 
     bot.send_message(message.chat.id, 'Количество подписчиков: ')
-    keys = idGroups.keys()
+
     # Словарь для групп и количества членов группы
-    groups_count = {}
-    for keyForCount in keys:
-        bot.send_message(message.chat.id, keyForCount + " - " +
-                         str(group.get_count(idGroups[keyForCount])) + " подписчиков.")
-        # Ключ - группа, значение - количество членов группы
-        groups_count[keyForCount] = group.get_count(idGroups[keyForCount])
-    # Вызываем метод передавая словари. Там затем генерируется картинка и сохраняется файлом (нужно иначе)
+    groupsDictCountUsers = group.get_count(idGroups)
+    keysGroups = groupsDictCountUsers.keys()
+    for keyGroup in keysGroups:
+        bot.send_message(message.chat.id, "Группа " + keyGroup + " имеет "
+                         + str(groupsDictCountUsers[keyGroup]) + " подписчиков.")
+    # Вызываем метод передавая словари. Там затем генерируется картинка и сохраняется файлом
     advNumber = numberIndex
     numberIndex += 1
-    graph.make_plotGraph(groups_count, groups_intersection, advNumber)
+    graph.make_plotGraph(groupsDictCountUsers, groups_intersection, advNumber)
 
     # Отправляем фотку клиенту
     bot.send_photo(message.chat.id, photo=open('picUsers/' + str(advNumber) + '.png', 'rb'))

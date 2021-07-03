@@ -79,7 +79,7 @@ def get_graph(comments, numberImage):
     options.set_preference("browser.helperApps.neverAsk.saveToDisk",
                            "application/octet-stream,application/vnd.ms-excel")
     driver = webdriver.Firefox(
-        executable_path=r'geckodriver.exe',
+        executable_path=r'data/geckodriver.exe',
         options=options)
 
     export_png(p, filename='picComments/' + str(numberImage) + '.png', webdriver=driver)
