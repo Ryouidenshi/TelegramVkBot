@@ -66,8 +66,10 @@ def select_funcAdmin(message):
                                   reply_markup=buttons.adminPanel)
         bot.register_next_step_handler(idUser, add_admin)
     elif message.text == 'Посмотреть уникальных пользователей':
+        #реализовать
         return
     elif message.text == 'Посмотреть историю обращений':
+        #реализовать
         return
     elif message.text == 'Вернуться':
         start_message(message)
