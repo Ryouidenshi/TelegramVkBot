@@ -1,14 +1,14 @@
 from __future__ import unicode_literals
 import telebot
 import parserComments
-import parserUsers
 from telebot import types
 import buttons
 import group
 import graph
 import vectors
+import parserUsers
 
-token = "1692493661:AAET5NbWMOFJUrQC3XN8hIwRz4um9ZARv-E"
+token = "925362923:AAFyL5YbToopgDHSI1pINKDMSdgmn4Yb6EU"
 
 bot = telebot.TeleBot(token)
 
@@ -44,7 +44,7 @@ def start_message(message: types.Message):
 @bot.message_handler(commands=['history'])
 def start_history(message: types.Message):
     return
-    #тут необходимо реализовать историю запросов для пользователя
+    # тут необходимо реализовать историю запросов для пользователя
 
 
 @bot.message_handler(commands=['admin'])
@@ -59,54 +59,55 @@ def start_admin(message: types.Message):
         bot.register_next_step_handler(f, select_funcAdmin)
 
 
-@bot.message_handler(content_types=['text'])
 def select_funcAdmin(message):
     if message.text == 'Добавить админа':
         idUser = bot.send_message(message.chat.id, 'Введите id пользователя.',
                                   reply_markup=buttons.adminPanel)
         bot.register_next_step_handler(idUser, add_admin)
     elif message.text == 'Посмотреть уникальных пользователей':
-        #реализовать
+        # реализовать
         return
     elif message.text == 'Посмотреть историю обращений':
-        #реализовать
+        # реализовать
         return
     elif message.text == 'Вернуться':
         start_message(message)
     else:
-        f = bot.send_message(message.chat.id, 'Такой функции нет, выберите заново.',
-                             reply_markup=buttons.adminPanel)
-        bot.register_next_step_handler(f, select_funcAdmin)
+        func = bot.send_message(message.chat.id, 'Такой функции нет, выберите заново.',
+                                reply_markup=buttons.adminPanel)
+        bot.register_next_step_handler(func, select_funcAdmin)
 
 
-@bot.message_handler(content_types=['text'])
 def add_admin(message):
     try:
         listAdmin.append(int(message.text))
-        bot.send_message(message.chat.id, 'Успешно.',
-                         reply_markup=buttons.adminPanel)
+        func = bot.send_message(message.chat.id, 'Успешно.',
+                                reply_markup=buttons.adminPanel)
+        bot.register_next_step_handler(func, select_funcAdmin)
     except Exception:
-        bot.send_message(message.chat.id, 'Не вышло.',
-                         reply_markup=buttons.adminPanel)
+        func = bot.send_message(message.chat.id, 'Не вышло.',
+                                reply_markup=buttons.adminPanel)
+        bot.register_next_step_handler(func, select_funcAdmin)
 
 
 @bot.message_handler(commands=['help'])
 def help_message(message: types.Message):
-    bot.send_photo(message.chat.id, photo=open('data/help.jpg', 'rb'), reply_markup=buttons.functionalKeyboard)
+    bot.send_photo(message.chat.id, photo=open('data/help.jpg', 'rb'), reply_markup=types.ReplyKeyboardRemove())
     bot.reply_to(message, "Используйте следующие команды:\n"
                           "Сделать анализ по общим пользователям - производится анализ групп VK по общим "
                           "пользователям.\n"
                           "Найти вектор комментариев - производится поиск обсуждаемых тем группы VK.\n"
-                          "Для связи с поддержкой пишите сюда - @yungryouidenshi")
+                          "Для связи с поддержкой пишите сюда - @yungryouidenshi\n"
+                          "/startbot - запустить бота")
 
 
 @bot.message_handler(commands=['startbot'])
 def start_bot(message: types.Message):
+    bot.send_photo(message.chat.id, photo=open('data/work.jpg', 'rb'))
     func = bot.send_message(message.chat.id, 'Выберите функцию снизу.', reply_markup=buttons.functionalKeyboard)
     bot.register_next_step_handler(func, select_func)
 
 
-@bot.message_handler(content_types=['text'])
 def select_func(message):
     idGroupsForUsers = {}
     if message.text == buttons.butFunc1.text:
@@ -129,7 +130,6 @@ def select_func(message):
         bot.send_message(message.chat.id, 'Такой функции нет :(')
 
 
-@bot.message_handler(content_types=['text'])
 def get_comments(message):
     global numberImageComments
     if message.text == 'Остановить':
@@ -160,7 +160,6 @@ def get_comments(message):
                 bot.register_next_step_handler(error, select_func)
 
 
-@bot.message_handler(content_types=['text'])
 def get_users(message, idGroups):
     if message.text in idGroups:
         intermediateIdGroup = bot.send_message(message.chat.id, 'Данная группа уже введена, введите новую!')
@@ -202,7 +201,6 @@ def get_users(message, idGroups):
         bot.register_next_step_handler(intermediateIdGroup, get_users, idGroups)
 
 
-@bot.message_handler(content_types=['text'])
 def get_result(message, idGroups):
     global numberIndex
 
@@ -250,6 +248,7 @@ def get_result(message, idGroups):
     txtFile = open('data/dataUsers' + str(advNumber) + '.txt', 'r')
     bot.send_document(message.chat.id, txtFile)
     bot.send_message(message.chat.id, endingFirstFunc, reply_markup=buttons.functionalKeyboard)
+    bot.register_next_step_handler(message, select_func)
 
 
 numberIndex = 1
