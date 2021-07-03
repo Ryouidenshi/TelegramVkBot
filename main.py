@@ -30,7 +30,8 @@ def write_start_message(message):
                  welcome + "\n\n"
                            "Используйте следующие команды:\n"
                            "/help - помощь\n"
-                           "/startbot - запустить бота\n")
+                           "/startbot - запустить бота\n"
+                           "/history - история запросов")
 
 
 @bot.message_handler(commands=['start'])
@@ -38,6 +39,12 @@ def start_message(message: types.Message):
     global listAdmin
     bot.send_photo(message.chat.id, photo=open('data/pre.jpg', 'rb'), reply_markup=types.ReplyKeyboardRemove())
     write_start_message(message)
+
+
+@bot.message_handler(commands=['history'])
+def start_history(message: types.Message):
+    return
+    #тут необходимо реализовать историю запросов для пользователя
 
 
 @bot.message_handler(commands=['admin'])
@@ -113,7 +120,9 @@ def select_func(message):
     elif message.text == '/start':
         start_message(message)
     elif message.text == '/admin':
-        start_admin
+        start_admin(message)
+    elif message.text == '/history':
+        start_history(message)
     else:
         bot.send_message(message.chat.id, 'Такой функции нет :(')
 
