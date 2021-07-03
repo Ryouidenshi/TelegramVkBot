@@ -8,7 +8,7 @@ import group
 import graph
 import vectors
 
-token = "1782563790:AAG1dhMmgZiw9_Hhzfoglxo7yRCOnwSt0jA"
+token = "1692493661:AAET5NbWMOFJUrQC3XN8hIwRz4um9ZARv-E"
 
 bot = telebot.TeleBot(token)
 
@@ -176,16 +176,28 @@ def get_users(message, idGroups):
     elif message.text == buttons.btnCycle2.text and len(idGroups) >= 2:
         get_result(message, idGroups)
     else:
-        bot.send_photo(message.chat.id, photo=open('picUsers/wait.jpg', 'rb'))
-        parseGroup = parserUsers.get_usersInGroup(message.text)
+        # Окей, сохраняю сообщение чтоб потом его обновлять
+        progressMessage = bot.send_message(message.chat.id, 'Подождите, узнаём всех участников этой группы\n'
+                                                            '[                    ] - 0%')
+        parseGroup = parserUsers.check_errorFoundGroup(message.text)
         if parseGroup == errorInputGroup:
             bot.send_message(message.chat.id, errorInputGroup)
         else:
-            idGroups[message.text] = parserUsers.get_usersInGroup(message.text)
-        if len(idGroups) > 0:
-            bot.send_message(message.chat.id, 'Введённые группы: ')
+            # Мне приходится progressMessage и bot "тянуть" сквозь некоторые функции в parserUsers.py, не могу пока
+            # адекватно сообразить как иначе это можно реализовать :/
+            idGroups[message.text] = parserUsers.get_usersInGroup(message.text, progressMessage, bot)
+        # Чтобы не плодить гигатонну сообщений построчных,
+        # делаю так чтоб введённые группы выводились одним сообщением
+        stringsGroups = ""
         for i in idGroups.keys():
-            bot.send_message(message.chat.id, i)
+            # Складываю названия групп
+            stringsGroups += i + '\n'
+        if len(stringsGroups) > 0:
+            # Редактирую сообщение прогресс пара на "Введённые группы: ", ибо выведение новым сообщением
+            # "Введённые группы: " и с отдельным удалением сообщения с прогресс баром выглядит некрасиво и дёрганно
+            bot.edit_message_text('Введённые группы:', message.chat.id, progressMessage.message_id)
+            # Вывожу список введённых групп
+            bot.send_message(message.chat.id, stringsGroups)
         intermediateIdGroup = bot.send_message(message.chat.id, 'Введите идентификатор группы')
         bot.register_next_step_handler(intermediateIdGroup, get_users, idGroups)
 
@@ -193,23 +205,41 @@ def get_users(message, idGroups):
 @bot.message_handler(content_types=['text'])
 def get_result(message, idGroups):
     global numberIndex
-    bot.send_photo(message.chat.id, photo=open('picUsers/wait.jpg', 'rb'))
+
+    # Не думаю что здесь нужен прогресс бар и вообще показ пикчи "паддажите",
+    # ибо вывод результатов обычно невероятно быстро происходит даже
+    # если пользователь ввёл много групп для анализа
+    # bot.send_photo(message.chat.id, photo=open('picUsers/wait.jpg', 'rb'))
+
     bot.send_message(message.chat.id, 'Общие подписчики групп: ')
     doneGroups = group.get_doneGroups(idGroups, numberIndex)
 
     groups_intersection = group.get_groupsIntersection(doneGroups)
+
+    # Чтобы не плодить гигатонну сообщений построчных,
+    # делаю так чтоб количество общих пользователей сразу одним махом отправились
+    stringsResult = ""
     for gr in groups_intersection:
-        bot.send_message(message.chat.id, "Группа " + gr[0] + " и группа "
-                         + gr[1] + " имеют " + str(gr[2]) + " общих пользователей.")
+        # Складываем строки
+        stringsResult += (gr[0] + " и " + gr[1] + " - " + str(gr[2])
+                          + " общих пользователей." + "\n")
+    if len(stringsResult) > 0:
+        bot.send_message(message.chat.id, stringsResult)
 
     bot.send_message(message.chat.id, 'Количество подписчиков: ')
 
     # Словарь для групп и количества членов группы
     groupsDictCountUsers = group.get_count(idGroups)
     keysGroups = groupsDictCountUsers.keys()
+
+    # Здесь аналогично тому что было выше, обнуляем строку предварительно и опять складываем
+    stringsResult = ""
     for keyGroup in keysGroups:
-        bot.send_message(message.chat.id, "Группа " + keyGroup + " имеет "
-                         + str(groupsDictCountUsers[keyGroup]) + " подписчиков.")
+        # Складываем строки
+        stringsResult += ("Группа " + keyGroup + " имеет " + str(groupsDictCountUsers[keyGroup])
+                          + " подписчиков." + "\n")
+    if len(stringsResult) > 0:
+        bot.send_message(message.chat.id, stringsResult)
     # Вызываем метод передавая словари. Там затем генерируется картинка и сохраняется файлом
     advNumber = numberIndex
     numberIndex += 1
