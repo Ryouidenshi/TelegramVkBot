@@ -1,6 +1,8 @@
+import gensim
 from nltk.corpus import stopwords
 from gensim.models import Word2Vec
 from selenium.webdriver.firefox.options import Options
+from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.manifold import TSNE
 import nltk
 import re
@@ -9,7 +11,6 @@ from bokeh.plotting import figure
 from bokeh.io import export_png
 from selenium import webdriver
 from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
-
 
 advStopWords = ['мы', 'ее', 'между', 'собой', 'но', 'снова', 'там', 'о', 'однажды', 'во время', 'вне', 'очень', 'иметь',
                 'с', 'они', 'свой', 'самой', 'или', 'ему', 'каждому', 'тому', 'самим', 'до', 'ниже', 'мы', 'эти',
@@ -22,7 +23,7 @@ advStopWords = ['мы', 'ее', 'между', 'собой', 'но', 'снова'
                 'здесь', 'то', 'просто']
 
 
-def get_sortedComments(comments):
+def get_sortedWords(comments):
     processedComments = ("".join(comments)).lower()
     processedComments = re.sub('[^a-яА-Я]', ' ', processedComments)
     processedComments = re.sub(r'\s+', ' ', processedComments)
@@ -35,34 +36,49 @@ def get_sortedComments(comments):
     return all_words
 
 
-def get_word2vec(comments):
-    words = get_sortedComments(comments)
-    word2vec = Word2Vec(words, min_count=2)
-    return word2vec
+def get_bestComments(comments, bestWords, word2vec):
+    dictComments = {}
+    sorted_dict = {}
+    for i in range(0, len(comments)):
+        dictComments[comments[i]] = 0
+    keys = dictComments.keys()
+    for word in bestWords:
+        for comm in keys:
+            if word in comm:
+                dictComments[comm] += word2vec.wv[word].max()
+    sorted_keys = sorted(dictComments, key=dictComments.get, reverse=True)
+    for w in sorted_keys:
+        if dictComments[w] == 0 or len(sorted_dict) >= 10:
+            break
+        sorted_dict[w] = dictComments[w]
+    return sorted_dict
 
 
 def get_bestWords(word2vec):
     vocab = []
     for i in range(0, len(word2vec.wv.index_to_key)):
-        if i > 100:
+        if i > 70:
             break
         vocab.append(word2vec.wv.index_to_key[i])
     return vocab
 
 
 def get_graph(comments, numberImage):
-    word2vec = get_word2vec(comments)
-    ws = get_bestWords(word2vec)
-    words_top_vec = word2vec.wv[ws]
+    tokenize = get_sortedWords(comments)
+    word2vec = Word2Vec(tokenize, min_count=2)
+    bestWords = get_bestWords(word2vec)
+    bestComments = get_bestComments(comments, bestWords, word2vec)
+    get_fileTxt(bestComments, numberImage)
+
     tsne = TSNE(n_components=2, random_state=0)
-    words_top_tsne = tsne.fit_transform(words_top_vec)
+    words_top_tsne = tsne.fit_transform(word2vec.wv[bestWords])
     p = figure(tools="pan,wheel_zoom,reset,save",
                toolbar_location="above",
-               title="Word2Vec t-SNE for most common words")
+               title="Темы обусждений подписчиков")
 
     source = ColumnDataSource(data=dict(x1=words_top_tsne[:, 0],
                                         x2=words_top_tsne[:, 1],
-                                        names=list(ws)))
+                                        names=list(bestWords)))
 
     p.scatter(x="x1", y="x2", size=8, source=source)
 
@@ -84,3 +100,13 @@ def get_graph(comments, numberImage):
 
     export_png(p, filename='picComments/' + str(numberImage) + '.png', webdriver=driver)
     driver.close()
+
+
+def get_fileTxt(comments, txtNumber):
+    fileTxt = open('data/dataComments' + str(txtNumber) + '.txt', 'w')
+    for comm in comments:
+        try:
+            fileTxt.write(comm + "\n")
+            fileTxt.write('-----------------------------------\n')
+        except Exception:
+            continue

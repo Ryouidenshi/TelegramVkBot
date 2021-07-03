@@ -22,6 +22,8 @@ errorFoundComments = open('helpingFiles/ErrorFoundComments.txt').read()
 
 errorFoundGroup = open('helpingFiles/ErrorFoundGroup.txt').read()
 
+listAdmin = [402294298]
+
 
 def write_start_message(message):
     bot.reply_to(message,
@@ -33,8 +35,50 @@ def write_start_message(message):
 
 @bot.message_handler(commands=['start'])
 def start_message(message: types.Message):
+    global listAdmin
     bot.send_photo(message.chat.id, photo=open('data/pre.jpg', 'rb'), reply_markup=types.ReplyKeyboardRemove())
     write_start_message(message)
+
+
+@bot.message_handler(commands=['admin'])
+def start_admin(message: types.Message):
+    if message.from_user.id not in listAdmin:
+        bot.send_message(message.chat.id, 'У вас нет прав доступа к данному разделу.',
+                         reply_markup=buttons.functionalKeyboard)
+        start_message(message)
+    else:
+        f = bot.send_message(message.chat.id, 'Авторизация прошла успешно. Выберите функцию.',
+                             reply_markup=buttons.adminPanel)
+        bot.register_next_step_handler(f, select_funcAdmin)
+
+
+@bot.message_handler(content_types=['text'])
+def select_funcAdmin(message):
+    if message.text == 'Добавить админа':
+        idUser = bot.send_message(message.chat.id, 'Введите id пользователя.',
+                                  reply_markup=buttons.adminPanel)
+        bot.register_next_step_handler(idUser, add_admin)
+    elif message.text == 'Посмотреть уникальных пользователей':
+        return
+    elif message.text == 'Посмотреть историю обращений':
+        return
+    elif message.text == 'Вернуться':
+        start_message(message)
+    else:
+        f = bot.send_message(message.chat.id, 'Такой функции нет, выберите заново.',
+                             reply_markup=buttons.adminPanel)
+        bot.register_next_step_handler(f, select_funcAdmin)
+
+
+@bot.message_handler(content_types=['text'])
+def add_admin(message):
+    try:
+        listAdmin.append(int(message.text))
+        bot.send_message(message.chat.id, 'Успешно.',
+                         reply_markup=buttons.adminPanel)
+    except Exception:
+        bot.send_message(message.chat.id, 'Не вышло.',
+                         reply_markup=buttons.adminPanel)
 
 
 @bot.message_handler(commands=['help'])
@@ -68,6 +112,8 @@ def select_func(message):
         help_message(message)
     elif message.text == '/start':
         start_message(message)
+    elif message.text == '/admin':
+        start_admin
     else:
         bot.send_message(message.chat.id, 'Такой функции нет :(')
 
@@ -90,8 +136,11 @@ def get_comments(message):
         else:
             try:
                 advNumber = numberImageComments
+                bot.send_message(message.chat.id, 'Анализ был произведён с помощью векторов слов: ')
                 vectors.get_graph(comments, advNumber)
                 bot.send_photo(message.chat.id, photo=open('picComments/' + str(advNumber) + '.png', 'rb'))
+                txtFile = open('data/dataComments' + str(advNumber) + '.txt', 'r')
+                bot.send_document(message.chat.id, txtFile)
                 numberImageComments += 1
                 bot.send_message(message.chat.id, endingFirstFunc, reply_markup=buttons.functionalKeyboard)
             except Exception:
