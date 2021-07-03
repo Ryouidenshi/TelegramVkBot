@@ -50,5 +50,5 @@ def get_usersInGroup(groupId, listUsersInGroup=None):
                 listUsersInGroup.append(item['id'])
         return listUsersInGroup
     except Exception:
-        errorInputGroupForFindUsers = open('helpingFiles/ErrorFoundGroup.txt').read()
-        return errorInputGroupForFindUsers
+        errorFoundGroup = open('helpingFiles/ErrorFoundGroup.txt').read()
+        return errorFoundGroup

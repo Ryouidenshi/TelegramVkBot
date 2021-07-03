@@ -33,7 +33,7 @@ def get_allComments(groupDomain, listComments=None):
     countParsedComments = 0
     threads = list()
     for post in range(0, len(postsId)):
-        if countParsedComments >= 100000:
+        if countParsedComments >= 10000:
             break
         x = threading.Thread(target=add_comment, args=(listComments, 0, idGroup, postsId[post]))
         threads.append(x)

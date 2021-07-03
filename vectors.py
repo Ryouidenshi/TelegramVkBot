@@ -84,4 +84,3 @@ def get_graph(comments, numberImage):
 
     export_png(p, filename='picComments/' + str(numberImage) + '.png', webdriver=driver)
     driver.close()
-

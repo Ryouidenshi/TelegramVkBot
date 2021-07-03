@@ -47,4 +47,3 @@ def get_groupsIntersection(doneGroups):
                     list_split = str(key).split()
                     groups_intersection.append([list_split[0], list_split[3], len(userGroups_split)])
     return groups_intersection
-
