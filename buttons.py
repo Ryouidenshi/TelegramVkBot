@@ -1,22 +1,40 @@
 from telebot import types
 
-functionalKeyboard = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
-butFunc1 = types.KeyboardButton('Сделать анализ по общим пользователям')
-butFunc2 = types.KeyboardButton('Найти вектор комментариев')
-functionalKeyboard.add(butFunc1, butFunc2)
+import enums
 
-cycleKeyboard = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
-btnCycle1 = types.KeyboardButton('Остановить')
-btnCycle2 = types.KeyboardButton('Показать результат')
-cycleKeyboard.add(btnCycle1, btnCycle2)
 
-cycle2Keyboard = types.ReplyKeyboardMarkup(row_width=1, resize_keyboard=True)
-btn2Cycle1 = types.KeyboardButton('Остановить')
-cycle2Keyboard.add(btn2Cycle1)
+class Buttons:
 
-adminPanel = types.ReplyKeyboardMarkup(row_width=4, resize_keyboard=True)
-adBut1 = types.KeyboardButton('Добавить админа')
-adBut2 = types.KeyboardButton('Посмотреть уникальных пользователей')
-adBut3 = types.KeyboardButton('Посмотреть историю обращений')
-adBut4 = types.KeyboardButton('Вернуться')
-adminPanel.add(adBut1, adBut2, adBut3, adBut4)
+    def __init__(self, type_buttons):
+        self.type_buttons = type_buttons
+
+    def createButton(self, name):
+        if self.type_buttons == 'unusual':
+            return
+        if name == enums.ButtonsType.FunctionalPanel:
+            keyboard = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+            buttonFirst = types.KeyboardButton('Сделать анализ по общим пользователям')
+            buttonSecond = types.KeyboardButton('Найти вектор комментариев')
+            keyboard.add(buttonFirst, buttonSecond)
+            return keyboard
+        elif name == enums.ButtonsType.AdminPanel:
+            keyboard = types.ReplyKeyboardMarkup(row_width=4, resize_keyboard=True)
+            buttonFirst = types.KeyboardButton('Добавить админа')
+            buttonSecond = types.KeyboardButton('Посмотреть уникальных пользователей')
+            buttonThird = types.KeyboardButton('Посмотреть историю обращений')
+            buttonFourth = types.KeyboardButton('Вернуться')
+            keyboard.add(buttonFirst, buttonSecond, buttonThird, buttonFourth)
+            return keyboard
+        elif name == enums.ButtonsType.SelectFirstFunction:
+            keyboard = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+            buttonFirst = types.KeyboardButton('Остановить')
+            buttonSecond = types.KeyboardButton('Показать результат')
+            keyboard.add(buttonFirst, buttonSecond)
+            return keyboard
+        elif name == enums.ButtonsType.SelectSecondFunction:
+            keyboard = types.ReplyKeyboardMarkup(row_width=1, resize_keyboard=True)
+            buttonFirst = types.KeyboardButton('Остановить')
+            keyboard.add(buttonFirst)
+            return keyboard
+        elif name == enums.ButtonsType.RemoveButtons:
+            return types.ReplyKeyboardRemove()

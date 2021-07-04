@@ -1,4 +1,5 @@
 import warnings
+
 warnings.filterwarnings('ignore')
 from nltk.corpus import stopwords
 from gensim.models import Word2Vec
@@ -91,7 +92,7 @@ def get_graph(comments, numberImage, message, bot):
     p.add_layout(labels)
 
     options = Options()
-    options.binary = FirefoxBinary(r'C:\Program Files\Mozilla Firefox\firefox.exe')
+    options.binary = FirefoxBinary(r'C:\Program Files (x86)\Mozilla Firefox\firefox.exe')
     options.set_preference("browser.download.folderList", 2)
     options.set_preference("browser.download.manager.showWhenStarting", False)
     options.set_preference("browser.download.dir", "/Data")
@@ -99,7 +100,7 @@ def get_graph(comments, numberImage, message, bot):
                            "application/octet-stream,application/vnd.ms-excel")
     driver = webdriver.Firefox(
         executable_path=r'data/geckodriver.exe',
-        options=options,
+        firefox_options=options,
         log_path='data/geckodriver.log')
 
     update_progress_bar(75, message, bot)

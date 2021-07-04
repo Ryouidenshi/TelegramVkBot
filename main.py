@@ -1,26 +1,18 @@
 from __future__ import unicode_literals
 import telebot
-import parserComments
 from telebot import types
 import buttons
-import group
-import graph
+import enums
+import parserComments
 import vectors
-import parserUsers
-
-token = "925362923:AAFyL5YbToopgDHSI1pINKDMSdgmn4Yb6EU"
+from graph import Graph
+from group import Group
+from parserUsers import ParserUsers
+from __future__ import print_function
+import psutil
+token = "1745458122:AAF4QwaORPl2ZKKGKgylhU9IQ94aJCD3sfk"
 
 bot = telebot.TeleBot(token)
-
-welcome = open('helpingFiles/Welcome.txt').read()
-
-endingFirstFunc = open('helpingFiles/EndFirstFunc.txt').read()
-
-errorInputGroup = open('helpingFiles/ErrorFoundGroup.txt').read()
-
-errorFoundComments = open('helpingFiles/ErrorFoundComments.txt').read()
-
-errorFoundGroup = open('helpingFiles/ErrorFoundGroup.txt').read()
 
 listAdmin = [402294298]
 
@@ -28,20 +20,23 @@ numberGroupUsers = 1
 
 numberImageComments = 1
 
+button = buttons.Buttons('usual')
+
 
 def write_start_message(message):
     bot.reply_to(message,
-                 welcome + "\n\n"
-                           "Используйте следующие команды:\n"
-                           "/help - помощь\n"
-                           "/startbot - запустить бота\n"
-                           "/history - история запросов")
+                 enums.ErrorsType.Welcome.value + "\n\n"
+                                            "Используйте следующие команды:\n"
+                                            "/help - помощь\n"
+                                            "/startbot - запустить бота\n"
+                                            "/history - история запросов")
 
 
 @bot.message_handler(commands=['start'])
 def start_message(message: types.Message):
     global listAdmin
-    bot.send_photo(message.chat.id, photo=open('data/pre.jpg', 'rb'), reply_markup=types.ReplyKeyboardRemove())
+    bot.send_photo(message.chat.id, photo=open('data/pre.jpg', 'rb'),
+                   reply_markup=button.createButton(enums.ButtonsType.RemoveButtons))
     write_start_message(message)
 
 
@@ -55,30 +50,30 @@ def start_history(message: types.Message):
 def start_admin(message: types.Message):
     if message.from_user.id not in listAdmin:
         bot.send_message(message.chat.id, 'У вас нет прав доступа к данному разделу.',
-                         reply_markup=buttons.functionalKeyboard)
+                         reply_markup=button.createButton(enums.ButtonsType.FunctionalPanel))
         start_message(message)
     else:
         f = bot.send_message(message.chat.id, 'Авторизация прошла успешно. Выберите функцию.',
-                             reply_markup=buttons.adminPanel)
+                             reply_markup=button.createButton(enums.ButtonsType.AdminPanel))
         bot.register_next_step_handler(f, select_funcAdmin)
 
 
 def select_funcAdmin(message):
-    if message.text == 'Добавить админа':
+    if message.text == enums.ButtonsType.AddAdmin.value:
         idUser = bot.send_message(message.chat.id, 'Введите id пользователя.',
-                                  reply_markup=buttons.adminPanel)
+                                  reply_markup=button.createButton(enums.ButtonsType.AdminPanel))
         bot.register_next_step_handler(idUser, add_admin)
-    elif message.text == 'Посмотреть уникальных пользователей':
+    elif message.text == enums.ButtonsType.ShowUniqueUsers:
         # реализовать
         return
-    elif message.text == 'Посмотреть историю обращений':
+    elif message.text == enums.ButtonsType.ShowHistory:
         # реализовать
         return
-    elif message.text == 'Вернуться':
+    elif message.text == enums.ButtonsType.Back:
         start_message(message)
     else:
         func = bot.send_message(message.chat.id, 'Такой функции нет, выберите заново.',
-                                reply_markup=buttons.adminPanel)
+                                reply_markup=button.createButton(enums.ButtonsType.AdminPanel))
         bot.register_next_step_handler(func, select_funcAdmin)
 
 
@@ -87,11 +82,11 @@ def add_admin(message):
     try:
         listAdmin.append(int(message.text))
         func = bot.send_message(message.chat.id, 'Успешно.',
-                                reply_markup=buttons.adminPanel)
+                                reply_markup=button.createButton(enums.ButtonsType.AdminPanel))
         bot.register_next_step_handler(func, select_funcAdmin)
     except Exception:
         func = bot.send_message(message.chat.id, 'Не вышло.',
-                                reply_markup=buttons.adminPanel)
+                                reply_markup=button.createButton(enums.ButtonsType.AdminPanel))
         bot.register_next_step_handler(func, select_funcAdmin)
 
 
@@ -109,19 +104,21 @@ def help_message(message: types.Message):
 @bot.message_handler(commands=['startbot'])
 def start_bot(message: types.Message):
     bot.send_photo(message.chat.id, photo=open('data/work.jpg', 'rb'))
-    func = bot.send_message(message.chat.id, 'Выберите функцию снизу.', reply_markup=buttons.functionalKeyboard)
+    func = bot.send_message(message.chat.id, 'Выберите функцию снизу.',
+                            reply_markup=button.createButton(enums.ButtonsType.FunctionalPanel))
     bot.register_next_step_handler(func, select_func)
 
 
 def select_func(message):
     idGroupsForUsers = {}
-    if message.text == buttons.butFunc1.text:
+    if message.text == enums.ButtonsType.FirstFunction.value:
         intermediateIdGroup = bot.send_message(message.chat.id, 'Введите идентификатор группы',
-                                               reply_markup=buttons.cycleKeyboard)
+                                               reply_markup=button.createButton(
+                                                   enums.ButtonsType.SelectFirstFunction))
         bot.register_next_step_handler(intermediateIdGroup, get_users, idGroupsForUsers)
-    elif message.text == buttons.butFunc2.text:
+    elif message.text == enums.ButtonsType.SecondFunction.value:
         idGroupCom = bot.send_message(message.chat.id, 'Введите идентификатор группы',
-                                      reply_markup=buttons.cycle2Keyboard)
+                                      reply_markup=button.createButton(enums.ButtonsType.SelectSecondFunction))
         bot.register_next_step_handler(idGroupCom, get_comments)
     elif message.text == '/help':
         help_message(message)
@@ -137,19 +134,22 @@ def select_func(message):
 
 def get_comments(message):
     global numberImageComments
-    if message.text == 'Остановить':
-        func = bot.send_message(message.chat.id, 'Выберите фунцию.', reply_markup=buttons.functionalKeyboard)
+    if message.text == enums.ButtonsType.Stop.value:
+        func = bot.send_message(message.chat.id, 'Выберите фунцию.',
+                                reply_markup=button.createButton(enums.ButtonsType.FunctionalPanel))
         bot.register_next_step_handler(func, select_func)
     else:
         # bot.send_photo(message.chat.id, photo=open('picUsers/wait.jpg', 'rb'))
         progressMessage = bot.send_message(message.chat.id, 'Подождите, выгружаются комментарии:\n'
                                                             '[                    ] - 0%')
         comments = parserComments.get_allComments(message.text, progressMessage, bot)
-        if comments == errorFoundComments:
-            error = bot.send_message(message.chat.id, errorFoundComments, reply_markup=buttons.functionalKeyboard)
+        if comments == enums.ErrorsType.ErrorFoundComments.value:
+            error = bot.send_message(message.chat.id, enums.ErrorsType.ErrorFoundComments.value,
+                                     reply_markup=button.createButton(enums.ButtonsType.FunctionalPanel))
             bot.register_next_step_handler(error, select_func)
-        elif comments == errorFoundGroup:
-            error = bot.send_message(message.chat.id, errorFoundGroup, reply_markup=buttons.functionalKeyboard)
+        elif comments == enums.ErrorsType.ErrorFoundGroup.value:
+            error = bot.send_message(message.chat.id, enums.ErrorsType.ErrorFoundGroup.value,
+                                     reply_markup=button.createButton(enums.ButtonsType.FunctionalPanel))
             bot.register_next_step_handler(error, select_func)
         else:
             # noinspection PyBroadException
@@ -164,11 +164,12 @@ def get_comments(message):
                 txtFile = open('data/dataComments' + str(advNumber) + '.txt', 'r')
                 bot.send_document(message.chat.id, txtFile)
                 numberImageComments += 1
-                bot.send_message(message.chat.id, endingFirstFunc, reply_markup=buttons.functionalKeyboard)
+                bot.send_message(message.chat.id, enums.ErrorsType.EndingFirstFunc.value,
+                                 reply_markup=button.createButton(enums.ButtonsType.FunctionalPanel))
                 bot.register_next_step_handler(message, select_func)
             except Exception:
                 error = bot.send_message(message.chat.id, 'Что-то пошло не так! Заново!',
-                                         reply_markup=buttons.functionalKeyboard)
+                                         reply_markup=button.createButton(enums.ButtonsType.FunctionalPanel))
                 bot.register_next_step_handler(error, select_func)
 
 
@@ -176,40 +177,30 @@ def get_users(message, idGroups):
     if message.text in idGroups:
         intermediateIdGroup = bot.send_message(message.chat.id, 'Данная группа уже введена, введите новую!')
         bot.register_next_step_handler(intermediateIdGroup, get_users, idGroups)
-    elif message.text == buttons.btnCycle1.text:
+    elif message.text == enums.ButtonsType.Stop.value:
         bot.send_message(message.chat.id, 'Выберите функцию',
-                         reply_markup=buttons.functionalKeyboard)
+                         reply_markup=button.createButton(enums.ButtonsType.FunctionalPanel))
         bot.register_next_step_handler(message, select_func)
-    elif message.text == buttons.btnCycle2.text and len(idGroups) < 2:
+    elif message.text == enums.ButtonsType.ShowResult.value and len(idGroups) < 2:
         intermediateIdGroup = bot.send_message(message.chat.id,
                                                'Групп должно быть минимум две, введите идентифактор группы!')
         bot.register_next_step_handler(intermediateIdGroup, get_users, idGroups)
-    elif message.text == buttons.btnCycle2.text and len(idGroups) >= 2:
+    elif message.text == enums.ButtonsType.ShowResult.value and len(idGroups) >= 2:
         get_result(message, idGroups)
     else:
         # Окей, сохраняю сообщение чтоб потом его обновлять
         progressMessage = bot.send_message(message.chat.id, 'Подождите, узнаём всех участников этой группы\n'
                                                             '[                    ] - 0%')
-        parseGroup = parserUsers.check_errorFoundGroup(message.text)
-        if parseGroup == errorInputGroup:
-            bot.send_message(message.chat.id, errorInputGroup)
-        else:
-            # Мне приходится progressMessage и bot "тянуть" сквозь некоторые функции в parserUsers.py, не могу пока
-            # адекватно сообразить как иначе это можно реализовать :/
-            idGroups[message.text] = parserUsers.get_usersInGroup(message.text, progressMessage, bot)
-        # Чтобы не плодить гигатонну сообщений построчных,
-        # делаю так чтоб введённые группы выводились одним сообщением
+        parserUsers = ParserUsers(message.text, progressMessage, bot)
+        idGroups[message.text] = parserUsers.get_usersInGroup()
         stringsGroups = ""
         for i in idGroups.keys():
-            # Складываю названия групп
             stringsGroups += i + '\n'
         if len(stringsGroups) > 0:
-            # Редактирую сообщение прогресс пара на "Введённые группы: ", ибо выведение новым сообщением
-            # "Введённые группы: " и с отдельным удалением сообщения с прогресс баром выглядит некрасиво и дёрганно
             bot.edit_message_text('Введённые группы:', message.chat.id, progressMessage.message_id)
-            # Вывожу список введённых групп
             bot.send_message(message.chat.id, stringsGroups)
         intermediateIdGroup = bot.send_message(message.chat.id, 'Введите идентификатор группы')
+        del parserUsers
         bot.register_next_step_handler(intermediateIdGroup, get_users, idGroups)
 
 
@@ -222,16 +213,15 @@ def get_result(message, idGroups):
     # bot.send_photo(message.chat.id, photo=open('picUsers/wait.jpg', 'rb'))
 
     bot.send_message(message.chat.id, 'Общие подписчики групп: ')
-    doneGroups = group.get_doneGroups(idGroups, numberGroupUsers)
 
-    groups_intersection = group.get_groupsIntersection(doneGroups)
+    resultGroups = Group(idGroups, numberGroupUsers)
 
     # Чтобы не плодить гигатонну сообщений построчных,
     # делаю так чтоб количество общих пользователей сразу одним махом отправились
     stringsResult = ""
-    for gr in groups_intersection:
+    for resultGroup in resultGroups.groupsIntersection:
         # Складываем строки
-        stringsResult += (gr[0] + " и " + gr[1] + " - " + str(gr[2])
+        stringsResult += (resultGroup[0] + " и " + resultGroup[1] + " - " + str(resultGroup[2])
                           + " общих пользователей." + "\n")
     if len(stringsResult) > 0:
         bot.send_message(message.chat.id, stringsResult)
@@ -239,27 +229,33 @@ def get_result(message, idGroups):
     bot.send_message(message.chat.id, 'Количество подписчиков: ')
 
     # Словарь для групп и количества членов группы
-    groupsDictCountUsers = group.get_count(idGroups)
-    keysGroups = groupsDictCountUsers.keys()
+    keysGroups = resultGroups.groups_count.keys()
 
     # Здесь аналогично тому что было выше, обнуляем строку предварительно и опять складываем
     stringsResult = ""
     for keyGroup in keysGroups:
         # Складываем строки
-        stringsResult += ("Группа " + keyGroup + " имеет " + str(groupsDictCountUsers[keyGroup])
+        stringsResult += ("Группа " + keyGroup + " имеет " + str(resultGroups.groups_count[keyGroup])
                           + " подписчиков." + "\n")
     if len(stringsResult) > 0:
         bot.send_message(message.chat.id, stringsResult)
     # Вызываем метод передавая словари. Там затем генерируется картинка и сохраняется файлом
     advNumber = numberGroupUsers
     numberGroupUsers += 1
-    graph.make_plotGraph(groupsDictCountUsers, groups_intersection, advNumber)
+
+    graph = Graph(resultGroups.groups_count, resultGroups.groupsIntersection, advNumber)
+
+    graph.make_plotGraph()
+
+    del resultGroups
+    del graph
 
     # Отправляем фотку клиенту
     bot.send_photo(message.chat.id, photo=open('picUsers/' + str(advNumber) + '.png', 'rb'))
     txtFile = open('data/dataUsers' + str(advNumber) + '.txt', 'r')
     bot.send_document(message.chat.id, txtFile)
-    bot.send_message(message.chat.id, endingFirstFunc, reply_markup=buttons.functionalKeyboard)
+    bot.send_message(message.chat.id, enums.ErrorsType.EndingFirstFunc.value,
+                     reply_markup=button.createButton(enums.ButtonsType.FunctionalPanel))
     bot.register_next_step_handler(message, select_func)
 
 
