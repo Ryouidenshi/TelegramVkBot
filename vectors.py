@@ -1,8 +1,8 @@
-import gensim
+import warnings
+warnings.filterwarnings('ignore')
 from nltk.corpus import stopwords
 from gensim.models import Word2Vec
 from selenium.webdriver.firefox.options import Options
-from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.manifold import TSNE
 import nltk
 import re
@@ -11,6 +11,7 @@ from bokeh.plotting import figure
 from bokeh.io import export_png
 from selenium import webdriver
 from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
+
 
 advStopWords = ['мы', 'ее', 'между', 'собой', 'но', 'снова', 'там', 'о', 'однажды', 'во время', 'вне', 'очень', 'иметь',
                 'с', 'они', 'свой', 'самой', 'или', 'ему', 'каждому', 'тому', 'самим', 'до', 'ниже', 'мы', 'эти',
@@ -63,11 +64,12 @@ def get_bestWords(word2vec):
     return vocab
 
 
-def get_graph(comments, numberImage):
+def get_graph(comments, numberImage, message, bot):
     tokenize = get_sortedWords(comments)
     word2vec = Word2Vec(tokenize, min_count=2)
     bestWords = get_bestWords(word2vec)
     bestComments = get_bestComments(comments, bestWords, word2vec)
+    update_progress_bar(10, message, bot)
     get_fileTxt(bestComments, numberImage)
 
     tsne = TSNE(n_components=2, random_state=0)
@@ -76,6 +78,7 @@ def get_graph(comments, numberImage):
                toolbar_location="above",
                title="Темы обусждений подписчиков")
 
+    update_progress_bar(50, message, bot)
     source = ColumnDataSource(data=dict(x1=words_top_tsne[:, 0],
                                         x2=words_top_tsne[:, 1],
                                         names=list(bestWords)))
@@ -98,15 +101,27 @@ def get_graph(comments, numberImage):
         executable_path=r'data/geckodriver.exe',
         options=options)
 
+    update_progress_bar(75, message, bot)
     export_png(p, filename='picComments/' + str(numberImage) + '.png', webdriver=driver)
+    update_progress_bar(95, message, bot)
     driver.close()
 
 
 def get_fileTxt(comments, txtNumber):
     fileTxt = open('data/dataComments' + str(txtNumber) + '.txt', 'w')
     for comm in comments:
+        # noinspection PyBroadException
         try:
             fileTxt.write(comm + "\n")
             fileTxt.write('-----------------------------------\n')
         except Exception:
             continue
+
+
+# Немного костыльная дичь с проносом ProgressMessage и bot через некоторые методы парсинга,
+# если у кого есть идеи как реализовать прогресс бар лучше и с меньшим количеством костылей - напишите в конфе
+def update_progress_bar(percent, message, bot):
+    countBar = (percent // 10)
+    strBarPercent = '[' + '|' * int(countBar) + ' ' * ((10 - int(countBar)) * 2) + '] - ' + str(percent) + '%'
+    bot.edit_message_text('Подождите, проводим анализ:\n' + strBarPercent,
+                          message.chat.id, message.message_id)

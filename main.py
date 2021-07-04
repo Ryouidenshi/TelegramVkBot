@@ -24,6 +24,10 @@ errorFoundGroup = open('helpingFiles/ErrorFoundGroup.txt').read()
 
 listAdmin = [402294298]
 
+numberGroupUsers = 1
+
+numberImageComments = 1
+
 
 def write_start_message(message):
     bot.reply_to(message,
@@ -43,7 +47,7 @@ def start_message(message: types.Message):
 
 @bot.message_handler(commands=['history'])
 def start_history(message: types.Message):
-    return
+    return message
     # тут необходимо реализовать историю запросов для пользователя
 
 
@@ -79,6 +83,7 @@ def select_funcAdmin(message):
 
 
 def add_admin(message):
+    # noinspection PyBroadException
     try:
         listAdmin.append(int(message.text))
         func = bot.send_message(message.chat.id, 'Успешно.',
@@ -136,8 +141,10 @@ def get_comments(message):
         func = bot.send_message(message.chat.id, 'Выберите фунцию.', reply_markup=buttons.functionalKeyboard)
         bot.register_next_step_handler(func, select_func)
     else:
-        bot.send_photo(message.chat.id, photo=open('picUsers/wait.jpg', 'rb'))
-        comments = parserComments.get_allComments(message.text)
+        # bot.send_photo(message.chat.id, photo=open('picUsers/wait.jpg', 'rb'))
+        progressMessage = bot.send_message(message.chat.id, 'Подождите, выгружаются комментарии:\n'
+                                                            '[                    ] - 0%')
+        comments = parserComments.get_allComments(message.text, progressMessage, bot)
         if comments == errorFoundComments:
             error = bot.send_message(message.chat.id, errorFoundComments, reply_markup=buttons.functionalKeyboard)
             bot.register_next_step_handler(error, select_func)
@@ -145,15 +152,20 @@ def get_comments(message):
             error = bot.send_message(message.chat.id, errorFoundGroup, reply_markup=buttons.functionalKeyboard)
             bot.register_next_step_handler(error, select_func)
         else:
+            # noinspection PyBroadException
             try:
+                bot.edit_message_text('Подождите, проводится анализ: ',
+                                      message.chat.id, progressMessage.message_id)
                 advNumber = numberImageComments
-                bot.send_message(message.chat.id, 'Анализ был произведён с помощью векторов слов: ')
-                vectors.get_graph(comments, advNumber)
+                vectors.get_graph(comments, advNumber, progressMessage, bot)
+                bot.edit_message_text('Анализ был произведён с помощью векторов слов: ',
+                                      message.chat.id, progressMessage.message_id)
                 bot.send_photo(message.chat.id, photo=open('picComments/' + str(advNumber) + '.png', 'rb'))
                 txtFile = open('data/dataComments' + str(advNumber) + '.txt', 'r')
                 bot.send_document(message.chat.id, txtFile)
                 numberImageComments += 1
                 bot.send_message(message.chat.id, endingFirstFunc, reply_markup=buttons.functionalKeyboard)
+                bot.register_next_step_handler(message, select_func)
             except Exception:
                 error = bot.send_message(message.chat.id, 'Что-то пошло не так! Заново!',
                                          reply_markup=buttons.functionalKeyboard)
@@ -202,7 +214,7 @@ def get_users(message, idGroups):
 
 
 def get_result(message, idGroups):
-    global numberIndex
+    global numberGroupUsers
 
     # Не думаю что здесь нужен прогресс бар и вообще показ пикчи "паддажите",
     # ибо вывод результатов обычно невероятно быстро происходит даже
@@ -210,7 +222,7 @@ def get_result(message, idGroups):
     # bot.send_photo(message.chat.id, photo=open('picUsers/wait.jpg', 'rb'))
 
     bot.send_message(message.chat.id, 'Общие подписчики групп: ')
-    doneGroups = group.get_doneGroups(idGroups, numberIndex)
+    doneGroups = group.get_doneGroups(idGroups, numberGroupUsers)
 
     groups_intersection = group.get_groupsIntersection(doneGroups)
 
@@ -239,8 +251,8 @@ def get_result(message, idGroups):
     if len(stringsResult) > 0:
         bot.send_message(message.chat.id, stringsResult)
     # Вызываем метод передавая словари. Там затем генерируется картинка и сохраняется файлом
-    advNumber = numberIndex
-    numberIndex += 1
+    advNumber = numberGroupUsers
+    numberGroupUsers += 1
     graph.make_plotGraph(groupsDictCountUsers, groups_intersection, advNumber)
 
     # Отправляем фотку клиенту
@@ -250,9 +262,5 @@ def get_result(message, idGroups):
     bot.send_message(message.chat.id, endingFirstFunc, reply_markup=buttons.functionalKeyboard)
     bot.register_next_step_handler(message, select_func)
 
-
-numberIndex = 1
-
-numberImageComments = 1
 
 bot.infinity_polling(1)

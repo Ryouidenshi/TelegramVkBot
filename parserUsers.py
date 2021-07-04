@@ -56,9 +56,11 @@ def get_threadResp(listResponses, offset, groupId):
     listResponses.append(get_response(offset, groupId))
 
 
+# noinspection PyBroadException
 def get_usersInGroup(groupId, progressMessage, bot, listUsersInGroup=None):
     if listUsersInGroup is None:
         listUsersInGroup = []
+
     try:
         responses = get_resp(groupId, progressMessage, bot)
         for response in responses:
@@ -70,6 +72,7 @@ def get_usersInGroup(groupId, progressMessage, bot, listUsersInGroup=None):
         return errorFoundGroup
 
 
+# noinspection PyBroadException
 def check_errorFoundGroup(groupId):
     try:
         get_response(0, groupId)
@@ -82,6 +85,6 @@ def check_errorFoundGroup(groupId):
 # если у кого есть идеи как реализовать прогресс бар лучше и с меньшим количеством костылей - напишите в конфе
 def update_progress_bar(percent, message, bot):
     countBar = (percent // 10)
-    strBarProcent = '[' + '|' * int(countBar) + ' ' * ((10 - int(countBar)) * 2) + '] - ' + str(percent) + '%'
-    bot.edit_message_text('Подождите, узнаём всех участников этой группы\n' + strBarProcent,
+    strBarPercent = '[' + '|' * int(countBar) + ' ' * ((10 - int(countBar)) * 2) + '] - ' + str(percent) + '%'
+    bot.edit_message_text('Подождите, узнаём всех участников этой группы\n' + strBarPercent,
                           message.chat.id, message.message_id)
