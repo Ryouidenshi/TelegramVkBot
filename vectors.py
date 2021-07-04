@@ -99,7 +99,8 @@ def get_graph(comments, numberImage, message, bot):
                            "application/octet-stream,application/vnd.ms-excel")
     driver = webdriver.Firefox(
         executable_path=r'data/geckodriver.exe',
-        options=options)
+        options=options,
+        log_path='data/geckodriver.log')
 
     update_progress_bar(75, message, bot)
     export_png(p, filename='picComments/' + str(numberImage) + '.png', webdriver=driver)
