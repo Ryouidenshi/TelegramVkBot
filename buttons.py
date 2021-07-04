@@ -2,7 +2,6 @@ from telebot import types
 
 import enums
 
-
 class Buttons:
 
     def __init__(self, type_buttons):

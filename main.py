@@ -1,5 +1,8 @@
 from __future__ import print_function
 from __future__ import unicode_literals
+
+import gc
+
 import telebot
 from telebot import types
 import buttons
@@ -260,6 +263,7 @@ def get_result(message, idGroups):
     bot.send_message(message.chat.id, enums.ErrorsType.EndingFirstFunc.value,
                      reply_markup=button.createButton(enums.ButtonsType.FunctionalPanel))
     bot.register_next_step_handler(message, select_func)
+    gc.collect()
 
 
 bot.infinity_polling(1)
