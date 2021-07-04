@@ -1,15 +1,15 @@
+from __future__ import print_function
 from __future__ import unicode_literals
 import telebot
 from telebot import types
 import buttons
 import enums
-import parserComments
-import vectors
 from graph import Graph
 from group import Group
 from parserUsers import ParserUsers
-from __future__ import print_function
-import psutil
+from vectors import Vectors
+from parserComments import ParserComments
+
 token = "1745458122:AAF4QwaORPl2ZKKGKgylhU9IQ94aJCD3sfk"
 
 bot = telebot.TeleBot(token)
@@ -26,10 +26,10 @@ button = buttons.Buttons('usual')
 def write_start_message(message):
     bot.reply_to(message,
                  enums.ErrorsType.Welcome.value + "\n\n"
-                                            "Используйте следующие команды:\n"
-                                            "/help - помощь\n"
-                                            "/startbot - запустить бота\n"
-                                            "/history - история запросов")
+                                                  "Используйте следующие команды:\n"
+                                                  "/help - помощь\n"
+                                                  "/startbot - запустить бота\n"
+                                                  "/history - история запросов")
 
 
 @bot.message_handler(commands=['start'])
@@ -142,12 +142,12 @@ def get_comments(message):
         # bot.send_photo(message.chat.id, photo=open('picUsers/wait.jpg', 'rb'))
         progressMessage = bot.send_message(message.chat.id, 'Подождите, выгружаются комментарии:\n'
                                                             '[                    ] - 0%')
-        comments = parserComments.get_allComments(message.text, progressMessage, bot)
-        if comments == enums.ErrorsType.ErrorFoundComments.value:
+        parserComments = ParserComments(message.text, progressMessage, bot)
+        if parserComments.listComments == enums.ErrorsType.ErrorFoundComments.value:
             error = bot.send_message(message.chat.id, enums.ErrorsType.ErrorFoundComments.value,
                                      reply_markup=button.createButton(enums.ButtonsType.FunctionalPanel))
             bot.register_next_step_handler(error, select_func)
-        elif comments == enums.ErrorsType.ErrorFoundGroup.value:
+        elif parserComments.listComments == enums.ErrorsType.ErrorFoundGroup.value:
             error = bot.send_message(message.chat.id, enums.ErrorsType.ErrorFoundGroup.value,
                                      reply_markup=button.createButton(enums.ButtonsType.FunctionalPanel))
             bot.register_next_step_handler(error, select_func)
@@ -157,7 +157,10 @@ def get_comments(message):
                 bot.edit_message_text('Подождите, проводится анализ: ',
                                       message.chat.id, progressMessage.message_id)
                 advNumber = numberImageComments
-                vectors.get_graph(comments, advNumber, progressMessage, bot)
+                vectors = Vectors(parserComments.listComments, advNumber, progressMessage, bot)
+                vectors.get_graph()
+                del vectors
+                del parserComments
                 bot.edit_message_text('Анализ был произведён с помощью векторов слов: ',
                                       message.chat.id, progressMessage.message_id)
                 bot.send_photo(message.chat.id, photo=open('picComments/' + str(advNumber) + '.png', 'rb'))
