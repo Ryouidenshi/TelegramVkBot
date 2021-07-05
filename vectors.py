@@ -1,5 +1,7 @@
 import warnings
 
+import numpy as np
+
 warnings.filterwarnings('ignore')
 from nltk.corpus import stopwords
 from gensim.models import Word2Vec
@@ -34,54 +36,90 @@ class Vectors:
                     'кого', 'бытие', 'если', 'их', 'мое', 'против', 'a', 'by', 'делать', 'это', 'как', 'дальше', 'было',
                     'здесь', 'то', 'просто']
 
-    def get_sortedWords(self):
-        processedComments = ("".join(self.comments)).lower()
+    def get_sortedWords(self, comment):
+        processedComments = ("".join(comment)).lower()
         processedComments = re.sub('[^a-яА-Я]', ' ', processedComments)
         processedComments = re.sub(r'\s+', ' ', processedComments)
         all_sentences = nltk.sent_tokenize(processedComments)
-        all_words = [nltk.word_tokenize(sent) for sent in all_sentences]
+        wordsInComment = [nltk.word_tokenize(sent) for sent in all_sentences]
 
-        for i in range(len(all_words)):
-            all_words[i] = [w for w in all_words[i] if len(w) > 2 and (w not in stopwords.words('russian'))
-                            and (w not in stopwords.words('english')) and (w not in self.advStopWords)]
-        return all_words
+        for i in range(len(wordsInComment)):
+            wordsInComment[i] = [w for w in wordsInComment[i] if len(w) > 2 and (w not in stopwords.words('russian'))
+                                 and (w not in stopwords.words('english')) and (w not in self.advStopWords)]
+        return wordsInComment
 
-    def get_bestComments(self, bestWords, word2vec):
-        dictComments = {}
-        sorted_dict = {}
-        for i in range(0, len(self.comments)):
-            dictComments[self.comments[i]] = 0
-        keys = dictComments.keys()
-        for word in bestWords:
-            for comm in keys:
-                if word in comm:
-                    dictComments[comm] += word2vec.wv[word].max()
-        sorted_keys = sorted(dictComments, key=dictComments.get, reverse=True)
-        for w in sorted_keys:
-            if dictComments[w] == 0 or len(sorted_dict) >= 10:
-                break
-            sorted_dict[w] = dictComments[w]
-        return sorted_dict
+    def get_vectorComment(self, comm):
+        wordsInComment = self.get_sortedWords(comm)
+        wv = Word2Vec(wordsInComment, min_count=1).wv.vectors.mean()
+        return wv
 
     @staticmethod
-    def get_bestWords(word2vec):
-        vocab = []
-        for i in range(0, len(word2vec.wv.index_to_key)):
-            if i > 70:
-                break
-            vocab.append(word2vec.wv.index_to_key[i])
-        return vocab
+    def get_names(vectorComments):
+        names = []
+        for i in range(0, len(vectorComments)):
+            names.append(' ')
+        return names
+
+    @staticmethod
+    def get_groupComments(vectorComments):
+        group = []
+        keys = vectorComments.keys()
+        for currentComm in keys:
+            if currentComm + ' ' + str(vectorComments[currentComm]) in [element for a_list in group for element in
+                                                                        a_list]:
+                continue
+            advList = []
+            for othComm in keys:
+                if othComm + ' ' + str(vectorComments[othComm]) in advList:
+                    continue
+                if abs(vectorComments[currentComm] - vectorComments[othComm]) < 0.0001:
+                    advList.append(othComm + ' ' + str(vectorComments[othComm]))
+            group.append(advList)
+        return group
+
+    def get_topics(self, groupsComments):
+        topics = {}
+        for i in range(0, len(groupsComments)):
+            advList = []
+            vectorGroup = 0
+            for j in range(0, len(groupsComments[i])):
+                commentWithVector = groupsComments[i][j].split()
+                vectorGroup += float(commentWithVector[-1])
+                advList.append(commentWithVector[:len(commentWithVector)-1])
+            vectorGroup /= len(groupsComments[i])
+            topics[self.get_topic(vectorGroup)] = advList
+        return topics
+
+    def get_topic(self, vector):
+        topic = ' '
+        differenceValueVector = 1000.0
+        words = self.get_sortedWords(self.comments)
+        word2vec = Word2Vec(words, min_count=1)
+        for i in words:
+            for j in i:
+                if abs(word2vec.wv[j].mean() - vector) < differenceValueVector:
+                    differenceValueVector = abs(word2vec.wv[j].mean() - vector)
+                    topic = j
+        return topic
 
     def get_graph(self):
-        tokenize = self.get_sortedWords()
-        word2vec = Word2Vec(tokenize, min_count=2)
-        bestWords = self.get_bestWords(word2vec)
-        bestComments = self.get_bestComments(bestWords, word2vec)
+        vectorsComments = {}
+        for comm in self.comments:
+            try:
+                vectorsComments[comm] = self.get_vectorComment(comm)
+            except RuntimeError:
+                continue
         self.update_progress_bar(10)
-        self.get_fileTxt(bestComments)
+
+        groupsComments = self.get_groupComments(vectorsComments)
+
+        topics = self.get_topics(groupsComments)
+
+        self.get_fileTxt(topics)
 
         tsne = TSNE(n_components=2, random_state=0)
-        words_top_tsne = tsne.fit_transform(word2vec.wv[bestWords])
+
+        words_top_tsne = tsne.fit_transform(np.asarray(list(vectorsComments.values())).reshape(-1, 1))
         p = figure(tools="pan,wheel_zoom,reset,save",
                    toolbar_location="above",
                    title="Темы обусждений подписчиков")
@@ -89,7 +127,7 @@ class Vectors:
         self.update_progress_bar(50)
         source = ColumnDataSource(data=dict(x1=words_top_tsne[:, 0],
                                             x2=words_top_tsne[:, 1],
-                                            names=list(bestWords)))
+                                            names=self.get_names(vectorsComments)))
 
         p.scatter(x="x1", y="x2", size=8, source=source)
 
@@ -99,7 +137,7 @@ class Vectors:
         p.add_layout(labels)
 
         options = Options()
-        options.binary = FirefoxBinary(r'C:\Program Files (x86)\Mozilla Firefox\firefox.exe')
+        options.binary = FirefoxBinary(r'C:\Program Files\Mozilla Firefox\firefox.exe')
         options.set_preference("browser.download.folderList", 2)
         options.set_preference("browser.download.manager.showWhenStarting", False)
         options.set_preference("browser.download.dir", "/Data")
@@ -107,7 +145,7 @@ class Vectors:
                                "application/octet-stream,application/vnd.ms-excel")
         driver = webdriver.Firefox(
             executable_path=r'data/geckodriver.exe',
-            firefox_options=options,
+            options=options,
             log_path='data/geckodriver.log')
 
         self.update_progress_bar(75)
@@ -115,12 +153,31 @@ class Vectors:
         self.update_progress_bar(95)
         driver.close()
 
-    def get_fileTxt(self, bestComments):
+    def get_fileTxt(self, topics):
         fileTxt = open('data/dataComments' + str(self.advNumber) + '.txt', 'w')
-        for comm in bestComments:
+        fileTxt.write('-----------------------------------\n')
+        keys = topics.keys()
+        counter = 1
+        for topic in keys:
             # noinspection PyBroadException
             try:
-                fileTxt.write(comm + "\n")
+                fileTxt.write(str(counter) + ' - ' + topic + "\n")
+                countComments = 0
+                fileTxt.write('Комментарий: ')
+                for i in topics[topic]:
+                    if countComments > 10:
+                        break
+                    isEmpty = 0
+                    for j in i:
+                        try:
+                            fileTxt.write(j + " ")
+                            isEmpty += 1
+                        except Exception:
+                            continue
+                    if isEmpty != 0:
+                        fileTxt.write("\n")
+                    countComments += 1
+                counter += 1
                 fileTxt.write('-----------------------------------\n')
             except Exception:
                 continue
