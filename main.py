@@ -2,6 +2,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import gc
+import types
 
 import telebot
 from telebot import types
@@ -66,13 +67,13 @@ def select_funcAdmin(message):
         idUser = bot.send_message(message.chat.id, 'Введите id пользователя.',
                                   reply_markup=button.createButton(enums.ButtonsType.AdminPanel))
         bot.register_next_step_handler(idUser, add_admin)
-    elif message.text == enums.ButtonsType.ShowUniqueUsers:
+    elif message.text == enums.ButtonsType.ShowCountUniqueUsers.value:
         # реализовать
         return
-    elif message.text == enums.ButtonsType.ShowHistory:
+    elif message.text == enums.ButtonsType.ShowCountStarts.value:
         # реализовать
         return
-    elif message.text == enums.ButtonsType.Back:
+    elif message.text == enums.ButtonsType.Back.value:
         start_message(message)
     else:
         func = bot.send_message(message.chat.id, 'Такой функции нет, выберите заново.',
@@ -156,7 +157,7 @@ def get_comments(message):
             bot.register_next_step_handler(error, select_func)
         else:
             # noinspection PyBroadException
-            try:
+            #try:
                 bot.edit_message_text('Подождите, проводится анализ: ',
                                       message.chat.id, progressMessage.message_id)
                 advNumber = numberImageComments
@@ -173,10 +174,10 @@ def get_comments(message):
                 bot.send_message(message.chat.id, enums.ErrorsType.EndingFirstFunc.value,
                                  reply_markup=button.createButton(enums.ButtonsType.FunctionalPanel))
                 bot.register_next_step_handler(message, select_func)
-            except Exception:
-                error = bot.send_message(message.chat.id, 'Что-то пошло не так! Заново!',
-                                         reply_markup=button.createButton(enums.ButtonsType.FunctionalPanel))
-                bot.register_next_step_handler(error, select_func)
+            #except Exception:
+                #error = bot.send_message(message.chat.id, 'Что-то пошло не так! Заново!',
+                                         #reply_markup=button.createButton(enums.ButtonsType.FunctionalPanel))
+                #bot.register_next_step_handler(error, select_func)
 
 
 def get_users(message, idGroups):
