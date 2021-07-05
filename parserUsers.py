@@ -1,5 +1,4 @@
 import threading
-
 import requests
 
 import enums
@@ -53,6 +52,7 @@ class ParserUsers:
                 refreshInterval = 100
         self.update_progress_bar(100, self.progressMessage, self.bot)
         [thread.join() for thread in threads]
+        threads.clear()
         return listResponses
 
     def get_threadResp(self, listResponses, offset, groupId):
