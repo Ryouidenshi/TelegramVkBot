@@ -47,38 +47,13 @@ class Vectors:
 
     def get_vectorsComments(self):
         vectorComments = {}
-        threads = list()
-        count = 0
-        listComments = []
-        vectors = []
         for comment in self.comments:
-            if count <= 40:
-                try:
-                    count += 1
-                    wordsInComment = self.get_sortedWords(comment)
-                    vector = Word2Vec(wordsInComment, min_count=1).wv.vectors.mean()
-                    listComments.append(comment)
-                    vectors.append(vector)
-                except RuntimeError:
-                    continue
-            else:
-                x = threading.Thread(target=self.get_vectorComment, args=(vectorComments,
-                                                                          listComments,
-                                                                          vectors))
-                threads.append(x)
-                count = 0
-                listComments = []
-                vectors = []
-                x.start()
-        [thread.join() for thread in threads]
-        threads.clear()
+            try:
+                wordsInComment = self.get_sortedWords(comment)
+                vectorComments[comment] = Word2Vec(wordsInComment, min_count=1).wv.vectors.mean()
+            except RuntimeError:
+                continue
         return vectorComments
-
-    def get_vectorComment(self, vectorComments, comments, vectors):
-        for i in range(0, len(comments)):
-            #wordsInComment = self.get_sortedWords(comment)
-            #wv = Word2Vec(wordsInComment, min_count=1).wv.vectors.mean()
-            vectorComments[comments[i]] = vectors[i]
 
     @staticmethod
     def get_groupComments(vectorComments):
@@ -97,21 +72,8 @@ class Vectors:
             group.append(advList)
         return group
 
-    def get_topic(self, vector):
-        topic = ' '
-        differenceValueVector = 1000.0
-        words = self.get_sortedWords(self.comments)
-        word2vec = Word2Vec(words, min_count=1)
-        for i in words:
-            for j in i:
-                if abs(word2vec.wv[j].mean() - vector) < differenceValueVector:
-                    differenceValueVector = abs(word2vec.wv[j].mean() - vector)
-                    topic = j
-        return topic
-
     def get_graph(self):
         vectorsComments = self.get_vectorsComments()
-        #self.get_fileTxt(topics)
 
         tsne = TSNE(n_components=2, random_state=0)
         words_top_tsne = tsne.fit_transform(np.asarray(list(vectorsComments.values())).reshape(-1, 1))
@@ -122,7 +84,7 @@ class Vectors:
         for k in range(1, 8):
             kMeans = KMeans(n_clusters=k, random_state=1).fit(words_top_tsne)
             inertia.append(np.sqrt(kMeans.inertia_))
-        for i in range(0, len(inertia)):
+        for i in range(0, len(inertia) - 1):
             if abs(inertia[i] - inertia[i + 1]) < 1:
                 break
             countClusters += 1
@@ -132,38 +94,36 @@ class Vectors:
 
         plt.scatter(x_axis, y_axis, s=8, c=kMeans.labels_)
         plt.savefig('picComments/' + str(self.advNumber) + '.png')
-
+        self.get_fileTxt(self.get_groupComments(vectorsComments))
         self.update_progress_bar(50)
 
-    def get_fileTxt(self, topics):
+    def get_fileTxt(self, groupsComments):
         fileTxt = open('data/dataComments' + str(self.advNumber) + '.txt', 'w')
         fileTxt.write('-----------------------------------\n')
-        keys = topics.keys()
         counter = 1
-        for topic in keys:
-            # noinspection PyBroadException
-            try:
-                fileTxt.write(str(counter) + ' - ' + topic + "\n")
-                countComments = 0
-                fileTxt.write('Комментарий: ')
-                for i in topics[topic]:
-                    if countComments > 10:
-                        break
-                    isEmpty = 0
-                    for j in i:
-                        # noinspection PyBroadException
-                        try:
-                            fileTxt.write(j + " ")
-                            isEmpty += 1
-                        except Exception:
-                            continue
-                    if isEmpty != 0:
-                        fileTxt.write("\n")
-                    countComments += 1
-                counter += 1
-                fileTxt.write('-----------------------------------\n')
-            except Exception:
-                continue
+        for group in groupsComments:
+            middleVectorComment = Word2Vec(group, min_count=1).wv.vectors.mean()
+            difference = 0.1
+            mainComments = []
+            for comment in group:
+                if len(mainComments) >= 5:
+                    break
+                splitComment = comment.split()
+                del splitComment[-1]
+                vectorComment = Word2Vec(splitComment, min_count=1).wv.vectors.mean()
+                if abs(vectorComment - middleVectorComment) < difference:
+                    difference = abs(vectorComment - middleVectorComment)
+                    mainComments.append(splitComment)
+            fileTxt.write(str(counter) + ':\n')
+            for comments in mainComments:
+                fileTxt.write("\n")
+                for text in comments:
+                    try:
+                        fileTxt.write(text + " ")
+                    except Exception:
+                        continue
+            fileTxt.write('\n-----------------------------------\n')
+            counter += 1
 
     # Немного костыльная дичь с проносом ProgressMessage и bot через некоторые методы парсинга,
     # если у кого есть идеи как реализовать прогресс бар лучше и с меньшим количеством костылей - напишите в конфе
@@ -175,4 +135,3 @@ class Vectors:
 
     def __del__(self):
         print('Deleted')
-
