@@ -1,19 +1,16 @@
+import threading
 import warnings
 
 import numpy as np
+from sklearn.cluster import KMeans
 
 warnings.filterwarnings('ignore')
 from nltk.corpus import stopwords
 from gensim.models import Word2Vec
-from selenium.webdriver.firefox.options import Options
 from sklearn.manifold import TSNE
 import nltk
 import re
-from bokeh.models import ColumnDataSource, LabelSet
-from bokeh.plotting import figure
-from bokeh.io import export_png
-from selenium import webdriver
-from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
+import matplotlib.pyplot as plt
 
 
 class Vectors:
@@ -48,17 +45,40 @@ class Vectors:
                                  and (w not in stopwords.words('english')) and (w not in self.advStopWords)]
         return wordsInComment
 
-    def get_vectorComment(self, comm):
-        wordsInComment = self.get_sortedWords(comm)
-        wv = Word2Vec(wordsInComment, min_count=1).wv.vectors.mean()
-        return wv
+    def get_vectorsComments(self):
+        vectorComments = {}
+        threads = list()
+        count = 0
+        listComments = []
+        vectors = []
+        for comment in self.comments:
+            if count <= 40:
+                try:
+                    count += 1
+                    wordsInComment = self.get_sortedWords(comment)
+                    vector = Word2Vec(wordsInComment, min_count=1).wv.vectors.mean()
+                    listComments.append(comment)
+                    vectors.append(vector)
+                except RuntimeError:
+                    continue
+            else:
+                x = threading.Thread(target=self.get_vectorComment, args=(vectorComments,
+                                                                          listComments,
+                                                                          vectors))
+                threads.append(x)
+                count = 0
+                listComments = []
+                vectors = []
+                x.start()
+        [thread.join() for thread in threads]
+        threads.clear()
+        return vectorComments
 
-    @staticmethod
-    def get_names(vectorComments):
-        names = []
-        for i in range(0, len(vectorComments)):
-            names.append(' ')
-        return names
+    def get_vectorComment(self, vectorComments, comments, vectors):
+        for i in range(0, len(comments)):
+            #wordsInComment = self.get_sortedWords(comment)
+            #wv = Word2Vec(wordsInComment, min_count=1).wv.vectors.mean()
+            vectorComments[comments[i]] = vectors[i]
 
     @staticmethod
     def get_groupComments(vectorComments):
@@ -77,19 +97,6 @@ class Vectors:
             group.append(advList)
         return group
 
-    def get_topics(self, groupsComments):
-        topics = {}
-        for i in range(0, len(groupsComments)):
-            advList = []
-            vectorGroup = 0
-            for j in range(0, len(groupsComments[i])):
-                commentWithVector = groupsComments[i][j].split()
-                vectorGroup += float(commentWithVector[-1])
-                advList.append(commentWithVector[:len(commentWithVector)-1])
-            vectorGroup /= len(groupsComments[i])
-            topics[self.get_topic(vectorGroup)] = advList
-        return topics
-
     def get_topic(self, vector):
         topic = ' '
         differenceValueVector = 1000.0
@@ -103,55 +110,30 @@ class Vectors:
         return topic
 
     def get_graph(self):
-        vectorsComments = {}
-        for comm in self.comments:
-            try:
-                vectorsComments[comm] = self.get_vectorComment(comm)
-            except RuntimeError:
-                continue
-        self.update_progress_bar(10)
-
-        groupsComments = self.get_groupComments(vectorsComments)
-
-        topics = self.get_topics(groupsComments)
-
-        self.get_fileTxt(topics)
+        vectorsComments = self.get_vectorsComments()
+        #self.get_fileTxt(topics)
 
         tsne = TSNE(n_components=2, random_state=0)
-
         words_top_tsne = tsne.fit_transform(np.asarray(list(vectorsComments.values())).reshape(-1, 1))
-        p = figure(tools="pan,wheel_zoom,reset,save",
-                   toolbar_location="above",
-                   title="Темы обусждений подписчиков")
+        x_axis = words_top_tsne[:, 0]
+        y_axis = words_top_tsne[:, 1]
+        inertia = []
+        countClusters = 0
+        for k in range(1, 8):
+            kMeans = KMeans(n_clusters=k, random_state=1).fit(words_top_tsne)
+            inertia.append(np.sqrt(kMeans.inertia_))
+        for i in range(0, len(inertia)):
+            if abs(inertia[i] - inertia[i + 1]) < 1:
+                break
+            countClusters += 1
+
+        kMeans = KMeans(n_clusters=countClusters)
+        kMeans.fit(words_top_tsne)
+
+        plt.scatter(x_axis, y_axis, s=8, c=kMeans.labels_)
+        plt.savefig('picComments/' + str(self.advNumber) + '.png')
 
         self.update_progress_bar(50)
-        source = ColumnDataSource(data=dict(x1=words_top_tsne[:, 0],
-                                            x2=words_top_tsne[:, 1],
-                                            names=self.get_names(vectorsComments)))
-
-        p.scatter(x="x1", y="x2", size=8, source=source)
-
-        labels = LabelSet(x="x1", y="x2", text="names", y_offset=6,
-                          text_font_size="8pt", text_color="#555555",
-                          source=source, text_align='center')
-        p.add_layout(labels)
-
-        options = Options()
-        options.binary = FirefoxBinary(r'C:\Program Files\Mozilla Firefox\firefox.exe')
-        options.set_preference("browser.download.folderList", 2)
-        options.set_preference("browser.download.manager.showWhenStarting", False)
-        options.set_preference("browser.download.dir", "/Data")
-        options.set_preference("browser.helperApps.neverAsk.saveToDisk",
-                               "application/octet-stream,application/vnd.ms-excel")
-        driver = webdriver.Firefox(
-            executable_path=r'data/geckodriver.exe',
-            options=options,
-            log_path='data/geckodriver.log')
-
-        self.update_progress_bar(75)
-        export_png(p, filename='picComments/' + str(self.advNumber) + '.png', webdriver=driver)
-        self.update_progress_bar(95)
-        driver.close()
 
     def get_fileTxt(self, topics):
         fileTxt = open('data/dataComments' + str(self.advNumber) + '.txt', 'w')
@@ -169,6 +151,7 @@ class Vectors:
                         break
                     isEmpty = 0
                     for j in i:
+                        # noinspection PyBroadException
                         try:
                             fileTxt.write(j + " ")
                             isEmpty += 1
@@ -192,3 +175,4 @@ class Vectors:
 
     def __del__(self):
         print('Deleted')
+
