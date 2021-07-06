@@ -44,7 +44,7 @@ class ParserComments:
         # Завожу некое значение для того чтобы прогрессбар обновлялся раз в N*100 выгруженных пользователей
         refreshInterval = 50
         for post in range(0, len(postsId)):
-            if countParsedComments >= 10000:
+            if countParsedComments >= 1500:
                 break
             x = threading.Thread(target=self.add_comment, args=(self.listComments, 0, idGroup, postsId[post]))
             threads.append(x)
