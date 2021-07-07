@@ -2,6 +2,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import gc
+import os
 import types
 
 import telebot
@@ -20,10 +21,6 @@ bot = telebot.TeleBot(token)
 
 listAdmin = [402294298]
 
-numberGroupUsers = 1
-
-numberImageComments = 1
-
 button = buttons.Buttons('usual')
 
 
@@ -39,7 +36,7 @@ def write_start_message(message):
 @bot.message_handler(commands=['start'])
 def start_message(message: types.Message):
     global listAdmin
-    bot.send_photo(message.chat.id, photo=open('data/pre.jpg', 'rb'),
+    bot.send_photo(message.chat.id, photo=open('picturesForMenu/pre.jpg', 'rb'),
                    reply_markup=button.createButton(enums.ButtonsType.RemoveButtons))
     write_start_message(message)
 
@@ -55,7 +52,7 @@ def start_admin(message: types.Message):
     if message.from_user.id not in listAdmin:
         bot.send_message(message.chat.id, 'У вас нет прав доступа к данному разделу.',
                          reply_markup=button.createButton(enums.ButtonsType.FunctionalPanel))
-        start_message(message)
+        help_message(message)
     else:
         f = bot.send_message(message.chat.id, 'Авторизация прошла успешно. Выберите функцию.',
                              reply_markup=button.createButton(enums.ButtonsType.AdminPanel))
@@ -74,7 +71,7 @@ def select_funcAdmin(message):
         # реализовать
         return
     elif message.text == enums.ButtonsType.Back.value:
-        start_message(message)
+        help_message(message)
     else:
         func = bot.send_message(message.chat.id, 'Такой функции нет, выберите заново.',
                                 reply_markup=button.createButton(enums.ButtonsType.AdminPanel))
@@ -95,8 +92,9 @@ def add_admin(message):
 
 
 @bot.message_handler(commands=['help'])
-def help_message(message: types.Message):
-    bot.send_photo(message.chat.id, photo=open('data/help.jpg', 'rb'), reply_markup=types.ReplyKeyboardRemove())
+def help_message(message: types.Message, ):
+    bot.send_photo(message.chat.id, photo=open('picturesForMenu/help.jpg', 'rb'),
+                   reply_markup=types.ReplyKeyboardRemove())
     bot.reply_to(message, "Используйте следующие команды:\n"
                           "Сделать анализ по общим пользователям - производится анализ групп VK по общим "
                           "пользователям.\n"
@@ -107,7 +105,7 @@ def help_message(message: types.Message):
 
 @bot.message_handler(commands=['startbot'])
 def start_bot(message: types.Message):
-    bot.send_photo(message.chat.id, photo=open('data/work.jpg', 'rb'))
+    bot.send_photo(message.chat.id, photo=open('picturesForMenu/work.jpg', 'rb'))
     func = bot.send_message(message.chat.id, 'Выберите функцию снизу.',
                             reply_markup=button.createButton(enums.ButtonsType.FunctionalPanel))
     bot.register_next_step_handler(func, select_func)
@@ -127,23 +125,24 @@ def select_func(message):
     elif message.text == '/help':
         help_message(message)
     elif message.text == '/start':
-        start_message(message)
+        help_message(message)
     elif message.text == '/admin':
         start_admin(message)
     elif message.text == '/history':
         start_history(message)
     else:
-        bot.send_message(message.chat.id, 'Такой функции нет :(')
+        message = bot.send_message(message.chat.id, 'Такой функции нет :(')
+        bot.register_next_step_handler(message, select_func)
 
 
 def get_comments(message):
-    global numberImageComments
+    requestNumberComments = len(os.listdir(path="dataComments")) + 1
+
     if message.text == enums.ButtonsType.Stop.value:
         func = bot.send_message(message.chat.id, 'Выберите фунцию.',
                                 reply_markup=button.createButton(enums.ButtonsType.FunctionalPanel))
         bot.register_next_step_handler(func, select_func)
     else:
-        # bot.send_photo(message.chat.id, photo=open('picUsers/wait.jpg', 'rb'))
         progressMessage = bot.send_message(message.chat.id, 'Подождите, выгружаются комментарии:\n'
                                                             '[                    ] - 0%')
         parserComments = ParserComments(message.text, progressMessage, bot)
@@ -157,27 +156,27 @@ def get_comments(message):
             bot.register_next_step_handler(error, select_func)
         else:
             # noinspection PyBroadException
-            #try:
+            try:
                 bot.edit_message_text('Подождите, проводится анализ: ',
                                       message.chat.id, progressMessage.message_id)
-                advNumber = numberImageComments
+                advNumber = message.from_user.username + 'Comments' + str(requestNumberComments)
+                requestNumberComments += 1
                 vectors = Vectors(parserComments.listComments, advNumber, progressMessage, bot)
                 vectors.get_graph()
                 del vectors
                 del parserComments
                 bot.edit_message_text('Анализ был произведён с помощью векторов слов: ',
                                       message.chat.id, progressMessage.message_id)
-                bot.send_photo(message.chat.id, photo=open('picComments/' + str(advNumber) + '.png', 'rb'))
-                txtFile = open('data/dataComments' + str(advNumber) + '.txt', 'r')
+                bot.send_photo(message.chat.id, photo=open('graphsComments/' + str(advNumber) + '.png', 'rb'))
+                txtFile = open('dataComments/' + str(advNumber) + '.txt', 'r')
                 bot.send_document(message.chat.id, txtFile)
-                numberImageComments += 1
                 bot.send_message(message.chat.id, enums.ErrorsType.EndingFirstFunc.value,
                                  reply_markup=button.createButton(enums.ButtonsType.FunctionalPanel))
                 bot.register_next_step_handler(message, select_func)
-            #except Exception:
-                #error = bot.send_message(message.chat.id, 'Что-то пошло не так! Заново!',
-                                         #reply_markup=button.createButton(enums.ButtonsType.FunctionalPanel))
-                #bot.register_next_step_handler(error, select_func)
+            except Exception:
+                error = bot.send_message(message.chat.id, 'Что-то пошло не так! Заново!',
+                                         reply_markup=button.createButton(enums.ButtonsType.FunctionalPanel))
+                bot.register_next_step_handler(error, select_func)
 
 
 def get_users(message, idGroups):
@@ -212,16 +211,15 @@ def get_users(message, idGroups):
 
 
 def get_result(message, idGroups):
-    global numberGroupUsers
-
     # Не думаю что здесь нужен прогресс бар и вообще показ пикчи "паддажите",
     # ибо вывод результатов обычно невероятно быстро происходит даже
     # если пользователь ввёл много групп для анализа
-    # bot.send_photo(message.chat.id, photo=open('picUsers/wait.jpg', 'rb'))
+
+    requestNumberUsers = len(os.listdir(path="dataUsers")) + 1
 
     bot.send_message(message.chat.id, 'Общие подписчики групп: ')
 
-    resultGroups = Group(idGroups, numberGroupUsers)
+    resultGroups = Group(idGroups, message.from_user.username + str(requestNumberUsers))
 
     # Чтобы не плодить гигатонну сообщений построчных,
     # делаю так чтоб количество общих пользователей сразу одним махом отправились
@@ -247,9 +245,7 @@ def get_result(message, idGroups):
     if len(stringsResult) > 0:
         bot.send_message(message.chat.id, stringsResult)
     # Вызываем метод передавая словари. Там затем генерируется картинка и сохраняется файлом
-    advNumber = numberGroupUsers
-    numberGroupUsers += 1
-
+    advNumber = message.from_user.username + 'Users' + str(requestNumberUsers)
     graph = Graph(resultGroups.groups_count, resultGroups.groupsIntersection, advNumber)
 
     graph.make_plotGraph()
@@ -258,13 +254,13 @@ def get_result(message, idGroups):
     del graph
 
     # Отправляем фотку клиенту
-    bot.send_photo(message.chat.id, photo=open('picUsers/' + str(advNumber) + '.png', 'rb'))
-    txtFile = open('data/dataUsers' + str(advNumber) + '.txt', 'r')
+    bot.send_photo(message.chat.id, photo=open('graphsUsers/' + str(advNumber) + '.png', 'rb'))
+    txtFile = open('dataUsers/' + str(advNumber) + '.txt', 'r')
+    requestNumberUsers += 1
     bot.send_document(message.chat.id, txtFile)
     bot.send_message(message.chat.id, enums.ErrorsType.EndingFirstFunc.value,
                      reply_markup=button.createButton(enums.ButtonsType.FunctionalPanel))
     bot.register_next_step_handler(message, select_func)
-    gc.collect()
 
 
 bot.infinity_polling(1)
