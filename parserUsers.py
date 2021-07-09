@@ -2,6 +2,7 @@ import threading
 import requests
 
 import enums
+from progressBar import ProgressBar
 
 
 class ParserUsers:
@@ -11,29 +12,29 @@ class ParserUsers:
         self.groupId = groupId
         self.progressMessage = progressMessage
         self.bot = bot
+        self.progressBar = ProgressBar(0, bot, progressMessage)
 
-    def get_response(self, offsetCount, groupId):
+    def getResponse(self, offsetCount, groupId):
         return requests.get('https://api.vk.com/method/groups.getMembers',
                             params={
                                 'access_token': self.token,
                                 'v': '5.131',
                                 'group_id': groupId,
                                 'sort': 'id_desc',
-                                'offset': offsetCount,
-                                'fields': 'last_seen'
+                                'offset': offsetCount
                             }).json()['response']
 
-    def get_resp(self):
+    def getResp(self):
         # Завожу некое значение для того чтобы прогрессбар обновлялся раз в N*1000 выгруженных пользователей
         refreshInterval = 100
         listResponses = []
         offset = 0
-        maxOffset = self.get_response(0, self.groupId)['count']
+        maxOffset = self.getResponse(0, self.groupId)['count']
         threads = list()
         while True:
             if offset > maxOffset:
                 break
-            x = threading.Thread(target=self.get_threadResp, args=(listResponses, offset, self.groupId))
+            x = threading.Thread(target=self.getThreadResp, args=(listResponses, offset, self.groupId))
             offset += 1000
             threads.append(x)
             x.start()
@@ -45,40 +46,44 @@ class ParserUsers:
             else:
                 # Предотвращаем  вывод в прогресс бар значения выше 100%,
                 # ибо offset в каких-то случаях может оказаться больше maxOffset
-                if round(offset / maxOffset * 100, 1) > 100:
+                if round(offset / maxOffset * 100, 1) > 80:
                     continue
-                self.update_progress_bar(round(offset / maxOffset * 100, 1), self.progressMessage, self.bot)
+                self.progressBar.update_progress_bar(round(offset / maxOffset * 100, 1),
+                                                     'Подождите, идёт загрузка участников группы:')
                 # Как обновили прогресс бар, обновляем значение интервала
                 refreshInterval = 100
-        self.update_progress_bar(100, self.progressMessage, self.bot)
         [thread.join() for thread in threads]
         threads.clear()
         return listResponses
 
-    def get_threadResp(self, listResponses, offset, groupId):
-        listResponses.append(self.get_response(offset, groupId))
+    def getThreadResp(self, listResponses, offset, groupId):
+        listResponses.append(self.getResponse(offset, groupId))
 
     # noinspection PyBroadException
-    def get_usersInGroup(self, listUsersInGroup=None):
+    def getUsersInGroup(self, listUsersInGroup=None):
         if listUsersInGroup is None:
             listUsersInGroup = []
         try:
-            responses = self.get_resp()
+            responses = self.getResp()
             for response in responses:
                 for item in response['items']:
-                    listUsersInGroup.append(item['id'])
+                    listUsersInGroup.append(item)
             return listUsersInGroup
         except Exception:
             return enums.ErrorsType.ErrorFoundGroup.value
 
-    # Немного костыльная дичь с проносом ProgressMessage и bot через некоторые методы парсинга,
-    # если у кого есть идеи как реализовать прогресс бар лучше и с меньшим количеством костылей - напишите в конфе
-    @staticmethod
-    def update_progress_bar(percent, message, bot):
-        countBar = (percent // 10)
-        strBarPercent = '[' + '|' * int(countBar) + ' ' * ((10 - int(countBar)) * 2) + '] - ' + str(percent) + '%'
-        bot.edit_message_text('Подождите, узнаём всех участников этой группы\n' + strBarPercent,
-                              message.chat.id, message.message_id)
+    def checkGroup(self, listUsersInGroup=None):
+        if listUsersInGroup is None:
+            listUsersInGroup = []
+        # noinspection PyBroadException
+        try:
+            responses = [self.getResponse(0, self.groupId)]
+            for response in responses:
+                for item in response['items']:
+                    listUsersInGroup.append(item)
+            return listUsersInGroup
+        except Exception:
+            return enums.ErrorsType.ErrorFoundGroup.value
 
     def __del__(self):
         print('Deleted')
