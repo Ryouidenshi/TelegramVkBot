@@ -2,36 +2,35 @@ import networkx as nx
 import numpy
 import matplotlib
 import matplotlib.pyplot as plt
-
 matplotlib.use('Agg')
 
 
 class Graph:
-    def __init__(self, groupsDictCountUsers, groups_intersection, advNumber):
-        self.groupsDictCountUsers = groupsDictCountUsers
-        self.groups_intersection = groups_intersection
-        self.advNumber = advNumber
+    def __init__(self, groupsCount, groupsIntersection, requestNumberGroup):
+        self.groupsCount = groupsCount
+        self.groupsIntersection = groupsIntersection
+        self.requestNumberGroup = requestNumberGroup
 
-    # По сути для прикручивания этого модуля к боту достачно изменить make_graph
     # Метод создания графа
 
-    def make_graph(self, groups_count):
+    def makeGraph(self):
         graph = nx.Graph()
 
-        groups_node = list(groups_count.items())
-        groups_edge = self.groups_intersection
+        groups_node = list(self.groupsCount.items())
+        groups_edge = self.groupsIntersection
+
         for node_group in range(len(groups_node)):
             graph.add_node(groups_node[node_group][0], size=groups_node[node_group][1])
         for edge_group in range(len(groups_edge)):
             graph.add_edge(groups_edge[edge_group][0], groups_edge[edge_group][1], weight=groups_edge[edge_group][2])
         return graph
 
-    def make_plotGraph(self):
-        graph = self.make_graph(self.groupsDictCountUsers)
-        self.plot_graph(graph)
+    def makePlotGraph(self):
+        graph = self.makeGraph()
+        self.getGraph(graph)
 
     # Метод визуализации графа
-    def plot_graph(self, graph):
+    def getGraph(self, graph):
         node_size_max = []
         node_size = []
 
@@ -63,16 +62,17 @@ class Graph:
         plt.ylim(y_min - y_margin, y_max + y_margin)
 
         # Рисуем ноды
-        nx.draw_networkx_nodes(graph, pos, node_size=node_size, node_color='y', alpha=0.6)
+        node_color = ['g']
+        for i in range(len(node_size) - 1):
+            node_color.append('y')
+        nx.draw_networkx_nodes(graph, pos, node_size=node_size, node_color=node_color, alpha=0.6)
 
         # Если грань всего 1 или их нет вовсе, то и смысла нормализовывать их толщину нет
         if len(graph.edges()) > 1:
             # Средняя ширина всех ребёр графа
             edge_mean = numpy.mean([graph.get_edge_data(i[0], i[1])["weight"] for i in graph.edges()])
-
             # Стандартное отклонение ширины рёбер графа
             edge_std_dev = numpy.std([graph.get_edge_data(i[0], i[1])["weight"] for i in graph.edges()])
-
             # Если вдруг ширина у всех рёбер одинаковая (отчего стандартное отклонение становится нулём), то это
             # приведёт к делению на ноль (оно не упадёт, но будет в консоли слать warning-и), поэтому делаем проверку
             # прежде чем совершать нормализацию
@@ -84,16 +84,13 @@ class Graph:
                 nx.draw_networkx_edges(graph, pos, edge_color='b')
         elif len(graph.edges()) == 1:
             nx.draw_networkx_edges(graph, pos, edge_color='b')
-
         # Рисуем надписи
         nx.draw_networkx_labels(graph, pos, font_size=10)
-
         # Убираем огромнейшее пустое пространство вокруг графа
         plt.tight_layout()
 
-        # Надо вместо сохранения в файл попробовать в какую-то структуру данных сохранить
-        # и через return вернуть для дальнейшей отправки картинки через бота
-        plt.savefig('picUsers/' + str(self.advNumber) + '.png')
+        plt.savefig('graphsUsers/' + str(self.requestNumberGroup) + '.png')
+        plt.close()
 
     def __del__(self):
-        print('Deleted')
+        print('DeletedGraphUser')
