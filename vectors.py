@@ -1,4 +1,3 @@
-import threading
 import warnings
 
 import numpy as np
@@ -11,14 +10,17 @@ from sklearn.manifold import TSNE
 import nltk
 import re
 import matplotlib.pyplot as plt
+from progressBar import ProgressBar
 
 
-class Vectors:
-    def __init__(self, comments, advNumber, progressMessage, bot):
+class CommentVectors:
+    def __init__(self, comments, requestNumberComments, progressMessage, bot, countNeededComments):
         self.comments = comments
-        self.advNumber = advNumber
+        self.countNeededComments = countNeededComments
+        self.requestNumberComments = requestNumberComments
         self.progressMessage = progressMessage
         self.bot = bot
+        self.progressBar = ProgressBar(0, bot, progressMessage)
 
     advStopWords = ['мы', 'ее', 'между', 'собой', 'но', 'снова', 'там', 'о', 'однажды', 'во время', 'вне', 'очень',
                     'иметь',
@@ -32,8 +34,9 @@ class Vectors:
                     'сама', 'имеет', 'просто', 'где', 'тоже', 'только', 'я', 'который', 'те', 'я', 'после', 'несколько',
                     'кого', 'бытие', 'если', 'их', 'мое', 'против', 'a', 'by', 'делать', 'это', 'как', 'дальше', 'было',
                     'здесь', 'то', 'просто']
+    forbiddenWords = open('data/forbiddenWords.txt').readlines()
 
-    def get_sortedWords(self, comment):
+    def getSortedWords(self, comment):
         processedComments = ("".join(comment)).lower()
         processedComments = re.sub('[^a-яА-Я]', ' ', processedComments)
         processedComments = re.sub(r'\s+', ' ', processedComments)
@@ -45,18 +48,26 @@ class Vectors:
                                  and (w not in stopwords.words('english')) and (w not in self.advStopWords)]
         return wordsInComment
 
-    def get_vectorsComments(self):
+    def getVectorsComments(self):
         vectorComments = {}
+        previous = round(60 / self.countNeededComments, 1)
         for comment in self.comments:
+            if self.countNeededComments == 0:
+                break
             try:
-                wordsInComment = self.get_sortedWords(comment)
+                if previous != round(60 / self.countNeededComments, 1):
+                    self.progressBar.update_progress_bar(round(60 / self.countNeededComments, 1),
+                                                         'Подождите, проводится анализ: ')
+                previous = round(60 / self.countNeededComments, 1)
+                wordsInComment = self.getSortedWords(comment)
                 vectorComments[comment] = Word2Vec(wordsInComment, min_count=1).wv.vectors.mean()
+                self.countNeededComments -= 1
             except RuntimeError:
                 continue
         return vectorComments
 
     @staticmethod
-    def get_groupComments(vectorComments):
+    def getGroupComments(vectorComments):
         group = []
         keys = vectorComments.keys()
         for currentComm in keys:
@@ -72,16 +83,19 @@ class Vectors:
             group.append(advList)
         return group
 
-    def get_graph(self):
-        vectorsComments = self.get_vectorsComments()
+    def getGraph(self):
+        self.progressBar.update_progress_bar(0, 'Подождите, проводится анализ: ')
+
+        vectorsComments = self.getVectorsComments()
 
         tsne = TSNE(n_components=2, random_state=0)
         words_top_tsne = tsne.fit_transform(np.asarray(list(vectorsComments.values())).reshape(-1, 1))
         x_axis = words_top_tsne[:, 0]
         y_axis = words_top_tsne[:, 1]
+
         inertia = []
         countClusters = 0
-        for k in range(1, 8):
+        for k in range(1, 15):
             kMeans = KMeans(n_clusters=k, random_state=1).fit(words_top_tsne)
             inertia.append(np.sqrt(kMeans.inertia_))
         for i in range(0, len(inertia) - 1):
@@ -89,16 +103,20 @@ class Vectors:
                 break
             countClusters += 1
 
+        self.progressBar.update_progress_bar(70, 'Подождите, проводится анализ: ')
         kMeans = KMeans(n_clusters=countClusters)
         kMeans.fit(words_top_tsne)
+        self.progressBar.update_progress_bar(80, 'Подождите, проводится анализ: ')
 
         plt.scatter(x_axis, y_axis, s=8, c=kMeans.labels_)
-        plt.savefig('picComments/' + str(self.advNumber) + '.png')
-        self.get_fileTxt(self.get_groupComments(vectorsComments))
-        self.update_progress_bar(50)
+        plt.savefig('graphsComments/' + str(self.requestNumberComments) + '.png')
+        plt.close()
+
+        self.get_fileTxt(self.getGroupComments(vectorsComments))
+        self.progressBar.update_progress_bar(90, 'Подождите, проводится анализ: ')
 
     def get_fileTxt(self, groupsComments):
-        fileTxt = open('data/dataComments' + str(self.advNumber) + '.txt', 'w')
+        fileTxt = open('dataComments/' + str(self.requestNumberComments) + '.txt', 'w')
         fileTxt.write('-----------------------------------\n')
         counter = 1
         for group in groupsComments:
@@ -118,20 +136,15 @@ class Vectors:
             for comments in mainComments:
                 fileTxt.write("\n")
                 for text in comments:
+                    # noinspection PyBroadException
                     try:
+                        if text in self.forbiddenWords:
+                            text = ''.join('*')
                         fileTxt.write(text + " ")
                     except Exception:
                         continue
             fileTxt.write('\n-----------------------------------\n')
             counter += 1
 
-    # Немного костыльная дичь с проносом ProgressMessage и bot через некоторые методы парсинга,
-    # если у кого есть идеи как реализовать прогресс бар лучше и с меньшим количеством костылей - напишите в конфе
-    def update_progress_bar(self, percent):
-        countBar = (percent // 10)
-        strBarPercent = '[' + '|' * int(countBar) + ' ' * ((10 - int(countBar)) * 2) + '] - ' + str(percent) + '%'
-        self.bot.edit_message_text('Подождите, проводим анализ:\n' + strBarPercent,
-                                   self.progressMessage.chat.id, self.progressMessage.message_id)
-
     def __del__(self):
-        print('Deleted')
+        print('DeletedVectors')
